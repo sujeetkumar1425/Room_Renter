@@ -217,7 +217,7 @@ export const PROPERTIES: Property[] = [
     reviews: 18,
     roomType: "Shared Room",
     furnished: "Semi Furnished",
-    occupancy: "Двое — 2 sharing",
+    occupancy: "2 sharing",
     gender: "Male",
     bathroom: "Shared",
     food: true,

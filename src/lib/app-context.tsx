@@ -3,7 +3,11 @@ import { ACTIVE_CITY, isCityAvailable } from "./data";
 
 type LocationStatus = "unknown" | "granted" | "denied" | "manual";
 
+export type UserRole = "seeker" | "owner" | null;
+
 type AppState = {
+  role: UserRole;
+  setRole: (role: UserRole) => void;
   city: string | null;
   status: LocationStatus;
   cityAvailable: boolean;

@@ -2,9 +2,6 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import {
   MapPin,
-  CalendarDays,
-  Wallet,
-  BedDouble,
   Search as SearchIcon,
   ShieldCheck,
   FileSignature,
@@ -12,21 +9,15 @@ import {
   KeyRound,
   Navigation,
   Check,
+  SlidersHorizontal,
 } from "lucide-react";
 import { Page } from "@/components/Layout";
 import { PropertyCard } from "@/components/PropertyCard";
 import { ComingSoon } from "@/components/ComingSoon";
+import { FiltersPanel } from "@/components/FiltersPanel";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CITIES, PROPERTIES, ROOM_TYPES } from "@/lib/data";
+import { CITIES, PROPERTIES } from "@/lib/data";
 import { useApp } from "@/lib/app-context";
 import { cn } from "@/lib/utils";
 
@@ -60,16 +51,10 @@ const journey = [
 function HomePage() {
   const { city, cityAvailable, ready, openLocationModal, setCity } = useApp();
   const navigate = useNavigate();
-  const [budget, setBudget] = useState("Any budget");
-  const [type, setType] = useState("Any type");
-  const [date, setDate] = useState("");
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const suggested = [...PROPERTIES].sort((a, b) => b.rating - a.rating).slice(0, 6);
 
-  const runSearch = () => {
-    if (!city) return openLocationModal();
-    navigate({ to: "/search", search: { city, type, budget } });
-  };
 
   return (
     <Page>
@@ -90,91 +75,20 @@ function HomePage() {
           </div>
 
           {/* SEARCH */}
-          <div className="card-surface mx-auto mt-8 max-w-5xl p-3 sm:p-4">
-            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-[1.3fr_1fr_1fr_1fr_auto]">
-              <button
-                onClick={openLocationModal}
-                className="flex items-center gap-3 rounded-xl border border-border px-3.5 py-3 text-left transition-colors hover:bg-muted"
-              >
-                <MapPin className="h-5 w-5 shrink-0 text-primary" />
-                <span className="min-w-0">
-                  <span className="block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    Location
-                  </span>
-                  <span className="block truncate text-sm font-medium">
-                    {city ?? "Select your city"}
-                  </span>
-                </span>
-              </button>
-
-              <label className="flex items-center gap-3 rounded-xl border border-border px-3.5 py-2 transition-colors focus-within:border-primary">
-                <CalendarDays className="h-5 w-5 shrink-0 text-muted-foreground" />
-                <span className="min-w-0 flex-1">
-                  <span className="block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    Move-in date
-                  </span>
-                  <Input
-                    type="date"
-                    value={date}
-                    onChange={(e) => setDate(e.target.value)}
-                    className="h-6 border-0 p-0 text-sm shadow-none focus-visible:ring-0"
-                  />
-                </span>
-              </label>
-
-              <div className="flex items-center gap-3 rounded-xl border border-border px-3.5 py-2">
-                <Wallet className="h-5 w-5 shrink-0 text-muted-foreground" />
-                <div className="min-w-0 flex-1">
-                  <span className="block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    Budget
-                  </span>
-                  <Select value={budget} onValueChange={setBudget}>
-                    <SelectTrigger className="h-6 border-0 p-0 text-sm shadow-none focus:ring-0">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {["Any budget", "Under ₹6,000", "₹6,000 – ₹10,000", "₹10,000 – ₹15,000", "₹15,000+"].map(
-                        (b) => (
-                          <SelectItem key={b} value={b}>
-                            {b}
-                          </SelectItem>
-                        ),
-                      )}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3 rounded-xl border border-border px-3.5 py-2">
-                <BedDouble className="h-5 w-5 shrink-0 text-muted-foreground" />
-                <div className="min-w-0 flex-1">
-                  <span className="block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    Room type
-                  </span>
-                  <Select value={type} onValueChange={setType}>
-                    <SelectTrigger className="h-6 border-0 p-0 text-sm shadow-none focus:ring-0">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ROOM_TYPES.map((t) => (
-                        <SelectItem key={t} value={t}>
-                          {t}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <Button size="lg" className="h-auto rounded-xl px-6 py-3.5" onClick={runSearch}>
-                <SearchIcon className="h-4 w-4" /> Search Rooms
-              </Button>
-            </div>
+          <div className="mt-8 flex flex-col items-center">
+            <Button
+              size="lg"
+              className="h-auto rounded-full px-8 py-4 text-base shadow-[var(--shadow-card)]"
+              onClick={() => setFiltersOpen(true)}
+            >
+              <SlidersHorizontal className="h-5 w-5" /> Filters &amp; Search
+            </Button>
+            <p className="mt-2 text-xs italic text-muted-foreground">All your filters in one place</p>
 
             {!city && (
               <button
                 onClick={openLocationModal}
-                className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-sm font-medium text-accent-foreground"
+                className="mt-4 flex items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-sm font-medium text-accent-foreground"
               >
                 <Navigation className="h-4 w-4" /> Turn on location to see rooms near you
               </button>
@@ -182,6 +96,8 @@ function HomePage() {
           </div>
         </div>
       </section>
+
+      <FiltersPanel open={filtersOpen} onOpenChange={setFiltersOpen} />
 
       {/* SUGGESTED ROOMS */}
       <section className="container-page py-12">

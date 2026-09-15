@@ -2,9 +2,6 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import {
   MapPin,
-  CalendarDays,
-  Wallet,
-  BedDouble,
   Search as SearchIcon,
   ShieldCheck,
   FileSignature,
@@ -12,21 +9,15 @@ import {
   KeyRound,
   Navigation,
   Check,
+  SlidersHorizontal,
 } from "lucide-react";
 import { Page } from "@/components/Layout";
 import { PropertyCard } from "@/components/PropertyCard";
 import { ComingSoon } from "@/components/ComingSoon";
+import { FiltersPanel } from "@/components/FiltersPanel";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CITIES, PROPERTIES, ROOM_TYPES } from "@/lib/data";
+import { CITIES, PROPERTIES } from "@/lib/data";
 import { useApp } from "@/lib/app-context";
 import { cn } from "@/lib/utils";
 
@@ -60,16 +51,10 @@ const journey = [
 function HomePage() {
   const { city, cityAvailable, ready, openLocationModal, setCity } = useApp();
   const navigate = useNavigate();
-  const [budget, setBudget] = useState("Any budget");
-  const [type, setType] = useState("Any type");
-  const [date, setDate] = useState("");
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const suggested = [...PROPERTIES].sort((a, b) => b.rating - a.rating).slice(0, 6);
 
-  const runSearch = () => {
-    if (!city) return openLocationModal();
-    navigate({ to: "/search", search: { city, type, budget } });
-  };
 
   return (
     <Page>

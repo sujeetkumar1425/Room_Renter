@@ -68,10 +68,10 @@ function HomePage() {
             <h1 className="mt-3 text-4xl font-extrabold leading-[1.1] sm:mt-5 sm:text-5xl lg:text-6xl">
               Find a room that feels like home.
             </h1>
-            <p className="mx-auto mt-3 max-w-2xl text-base text-muted-foreground sm:mt-4 sm:text-lg">
+            {/* <p className="mx-auto mt-3 max-w-2xl text-base text-muted-foreground sm:mt-4 sm:text-lg">
               Discover verified rooms, flats and shared spaces near your college, workplace or
               preferred location.
-            </p>
+            </p> */}
           </div>
 
           {/* SEARCH */}

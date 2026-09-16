@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <circle cx="32" cy="32" r="30" fill="#009F95"/>
+
+  <!-- Complete house outline -->
+  <path
+    d="M21 46 V30 L32 20 L43 30 V46 H21 Z"
+    fill="none"
+    stroke="#FFFFFF"
+    stroke-width="4"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+
+  <!-- Door -->
+  <path
+    d="M28 46 V36 H36 V46"
+    fill="none"
+    stroke="#FFFFFF"
+    stroke-width="4"
+    stroke-linejoin="round"
+  />
+</svg>

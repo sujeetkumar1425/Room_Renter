@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import {
   Heart,
   MessageSquare,
@@ -12,8 +12,43 @@ import {
 import { Page } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/lib/app-context";
+import { supabase } from "@/lib/supabase";
 
 export const Route = createFileRoute("/dashboard")({
+  // ============================================
+  // ROUTE PROTECTION
+  // ============================================
+  beforeLoad: async () => {
+    // Check whether the user is logged in
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    // Not logged in → go to login
+    if (!session) {
+      throw redirect({
+        to: "/login",
+      });
+    }
+
+    // Get the user's role from Supabase
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", session.user.id)
+      .single();
+
+    // Landlord → landlord dashboard
+    if (profile?.role === "landlord") {
+      throw redirect({
+        to: "/landlord",
+      });
+    }
+  },
+
+  // ============================================
+  // PAGE META
+  // ============================================
   head: () => ({
     meta: [
       {
@@ -21,12 +56,18 @@ export const Route = createFileRoute("/dashboard")({
       },
       {
         name: "description",
-        content: "Manage your saved rooms, visits, messages and rental agreements.",
+        content:
+          "Manage your saved rooms, visits, messages and rental agreements.",
       },
     ],
   }),
+
   component: DashboardPage,
 });
+
+// ================================================
+// DASHBOARD PAGE
+// ================================================
 
 function DashboardPage() {
   const { user } = useApp();
@@ -40,7 +81,9 @@ function DashboardPage() {
     <Page>
       <div className="container-page py-8 sm:py-12">
 
-        {/* HEADER */}
+        {/* ============================================
+            HEADER
+        ============================================ */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm font-medium text-primary">
@@ -64,7 +107,9 @@ function DashboardPage() {
           </Button>
         </div>
 
-        {/* QUICK ACTIONS */}
+        {/* ============================================
+            QUICK ACTIONS
+        ============================================ */}
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
 
           <DashboardCard
@@ -97,7 +142,9 @@ function DashboardPage() {
 
         </div>
 
-        {/* RECENT ACTIVITY */}
+        {/* ============================================
+            RECENT ACTIVITY
+        ============================================ */}
         <section className="mt-10">
 
           <div className="flex items-center justify-between">
@@ -142,7 +189,9 @@ function DashboardPage() {
 
         </section>
 
-        {/* PROFILE */}
+        {/* ============================================
+            PROFILE
+        ============================================ */}
         <section className="mt-8">
 
           <div className="rounded-2xl border border-border bg-card p-6">
@@ -184,10 +233,9 @@ function DashboardPage() {
   );
 }
 
-
-/* ================================
-   DASHBOARD CARD
-================================ */
+// ================================================
+// DASHBOARD CARD
+// ================================================
 
 function DashboardCard({
   icon: Icon,
@@ -222,7 +270,6 @@ function DashboardCard({
       <p className="mt-1 text-sm text-muted-foreground">
         {description}
       </p>
-
     </Link>
   );
 }

@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import {
   Building2,
   Plus,
@@ -6,14 +6,45 @@ import {
   CalendarDays,
   Users,
   ArrowRight,
-  Home,
 } from "lucide-react";
 
 import { Page } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/lib/app-context";
+import { supabase } from "@/lib/supabase";
 
 export const Route = createFileRoute("/landlord")({
+  // ============================================
+  // ROUTE PROTECTION
+  // ============================================
+  beforeLoad: async () => {
+    // Check if user is logged in
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    // Not logged in → send to login
+    if (!session) {
+      throw redirect({
+        to: "/login",
+      });
+    }
+
+    // Get user's role from profiles table
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", session.user.id)
+      .single();
+
+    // Renters should not access landlord dashboard
+    if (profile?.role !== "landlord") {
+      throw redirect({
+        to: "/dashboard",
+      });
+    }
+  },
+
   head: () => ({
     meta: [
       {
@@ -42,7 +73,9 @@ function LandlordDashboard() {
     <Page>
       <div className="container-page py-8 sm:py-12">
 
-        {/* HEADER */}
+        {/* ============================================
+            HEADER
+        ============================================ */}
         <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
 
           <div>
@@ -71,7 +104,9 @@ function LandlordDashboard() {
 
         </div>
 
-        {/* STATS */}
+        {/* ============================================
+            STATS
+        ============================================ */}
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
 
           <StatCard
@@ -104,7 +139,9 @@ function LandlordDashboard() {
 
         </div>
 
-        {/* MY PROPERTIES */}
+        {/* ============================================
+            MY PROPERTIES
+        ============================================ */}
         <section className="mt-10">
 
           <div className="flex items-center justify-between">
@@ -150,7 +187,9 @@ function LandlordDashboard() {
 
         </section>
 
-        {/* QUICK ACTIONS */}
+        {/* ============================================
+            QUICK ACTIONS
+        ============================================ */}
         <section className="mt-8">
 
           <h2 className="text-xl font-bold">
@@ -189,10 +228,9 @@ function LandlordDashboard() {
   );
 }
 
-
-/* ================================
+/* ================================================
    STAT CARD
-================================ */
+================================================ */
 
 function StatCard({
   icon: Icon,
@@ -232,10 +270,9 @@ function StatCard({
   );
 }
 
-
-/* ================================
+/* ================================================
    ACTION CARD
-================================ */
+================================================ */
 
 function ActionCard({
   icon: Icon,

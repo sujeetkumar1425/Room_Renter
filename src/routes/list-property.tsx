@@ -1,5 +1,6 @@
+//import { useRef } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   MapPin,
   BedDouble,
@@ -30,6 +31,7 @@ import {
 import { ACTIVE_CITY, ROOM_TYPES, AMENITY_LIST, formatINR } from "@/lib/data";
 import { useApp } from "@/lib/app-context";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/lib/supabase";
 
 export const Route = createFileRoute("/list-property")({
   head: () => ({
@@ -83,6 +85,7 @@ function ListPropertyPage() {
   });
   const [picked, setPicked] = useState<string[]>(["Wi-Fi", "Attached Bathroom"]);
   const [photos, setPhotos] = useState<string[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [rules, setRules] = useState({
     guests: true,
     pets: false,
@@ -96,12 +99,82 @@ function ListPropertyPage() {
   const toggleAmenity = (a: string) =>
     setPicked((p) => (p.includes(a) ? p.filter((x) => x !== a) : [...p, a]));
 
-  const addPhoto = () => setPhotos((p) => [...p, `Photo ${p.length + 1}.jpg`]);
+  const addPhoto = () => {
+    fileInputRef.current?.click();
+  };
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+
+    if (!files.length) return;
+
+    const previews = files.map((file) => URL.createObjectURL(file));
+
+    setPhotos((current) => [...current, ...previews]);
+
+    e.target.value = "";
+  };
   const removePhoto = (i: number) => setPhotos((p) => p.filter((_, idx) => idx !== i));
 
-  const publish = () => {
-    toast.success("Property published — it will go live after verification.");
-    setStep(0);
+  const publish = async () => {
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session) {
+        toast.error("Please log in as a landlord first.");
+        return;
+      }
+
+      if (!form.title.trim()) {
+        toast.error("Please enter a listing title.");
+        setStep(0);
+        return;
+      }
+
+      if (!form.address.trim()) {
+        toast.error("Please enter the full address.");
+        setStep(0);
+        return;
+      }
+
+      if (!form.rent) {
+        toast.error("Please enter the monthly rent.");
+        setStep(1);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("properties")
+        .insert({
+          landlord_id: session.user.id,
+          title: form.title,
+          description: form.description,
+          rent: Number(form.rent),
+          city: form.city,
+          address: form.address,
+          room_type: form.roomType,
+          bedrooms: Number(form.occupancy),
+          bathrooms: 1,
+          available: true,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error("Property insert error:", error);
+        toast.error(error.message);
+        return;
+      }
+
+      console.log("Property created:", data);
+
+      toast.success("Property published successfully!");
+      setStep(0);
+    } catch (error) {
+      console.error("Unexpected error:", error);
+      toast.error("Something went wrong while publishing.");
+    }
   };
 
   return (
@@ -310,13 +383,25 @@ function ListPropertyPage() {
 
           {step === 3 && (
             <div>
-              <button
-                onClick={addPhoto}
-                className="flex w-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border bg-muted/40 py-10 text-sm text-muted-foreground transition-colors hover:bg-muted"
-              >
-                <Upload className="h-5 w-5 text-primary" />
-                Upload room photos — first photo becomes the cover
-              </button>
+              <>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={handlePhotoChange}
+                />
+
+                <button
+                  type="button"
+                  onClick={addPhoto}
+                  className="flex w-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border bg-muted/40 py-10 text-sm text-muted-foreground transition-colors hover:bg-muted"
+                >
+                  <Upload className="h-5 w-5 text-primary" />
+                  Upload room photos — first photo becomes the cover
+                </button>
+              </>
               {photos.length > 0 && (
                 <div className="mt-4 grid gap-3 sm:grid-cols-3">
                   {photos.map((p, i) => (

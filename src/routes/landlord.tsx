@@ -7,6 +7,7 @@ import {
   Users,
   ArrowRight,
 } from "lucide-react";
+import { useEffect, useState } from "react";
 
 import { Page } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
@@ -63,11 +64,47 @@ export const Route = createFileRoute("/landlord")({
 
 function LandlordDashboard() {
   const { user } = useApp();
+  const [propertyCount, setPropertyCount] = useState(0);
+  const [properties, setProperties] = useState<any[]>([]);
+
+  useEffect(() => {
+  const loadProperties = async () => {
+    const {
+      data: { user: currentUser },
+    } = await supabase.auth.getUser();
+
+    if (!currentUser) {
+      console.log("No authenticated user found");
+      return;
+    }
+
+    console.log("Current landlord ID:", currentUser.id);
+
+    const { data, error, count } = await supabase
+      .from("properties")
+      .select("*", { count: "exact" })
+      .eq("landlord_id", currentUser.id);
+
+    console.log("Properties:", data);
+    console.log("Property count:", count);
+    console.log("Property error:", error);
+
+    if (error) {
+      console.error("Error loading properties:", error);
+      return;
+    }
+    setProperties(data ?? []);
+    setPropertyCount(count ?? 0);
+  };
+
+  loadProperties();
+}, []);
 
   const name =
     user?.user_metadata?.full_name ||
     user?.email?.split("@")[0] ||
     "Landlord";
+    console.log("propertyCount state:", propertyCount);
 
   return (
     <Page>
@@ -112,7 +149,7 @@ function LandlordDashboard() {
           <StatCard
             icon={Building2}
             title="My Properties"
-            value="0"
+            value={String(propertyCount)}
             description="Properties listed"
           />
 
@@ -158,32 +195,69 @@ function LandlordDashboard() {
 
           </div>
 
-          <div className="mt-4 rounded-2xl border border-border bg-card p-8 text-center">
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+  {properties.length === 0 ? (
+    <div className="rounded-2xl border border-border bg-card p-8 text-center sm:col-span-2">
+      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+        <Building2 className="h-5 w-5 text-primary" />
+      </div>
 
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-              <Building2 className="h-5 w-5 text-primary" />
-            </div>
+      <h3 className="mt-4 font-semibold">
+        No properties yet
+      </h3>
 
-            <h3 className="mt-4 font-semibold">
-              No properties yet
+      <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
+        List your first room or property and start receiving
+        enquiries from renters.
+      </p>
+
+      <Button
+        asChild
+        className="mt-5 rounded-xl"
+      >
+        <Link to="/list-property">
+          <Plus className="mr-2 h-4 w-4" />
+          List Your Property
+        </Link>
+      </Button>
+    </div>
+  ) : (
+    properties.map((property) => (
+      <div
+        key={property.id}
+        className="rounded-2xl border border-border bg-card p-5"
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h3 className="font-semibold">
+              {property.title}
             </h3>
 
-            <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
-              List your first room or property and start receiving
-              enquiries from renters.
+            <p className="mt-1 text-sm text-muted-foreground">
+              {property.city}
             </p>
 
-            <Button
-              asChild
-              className="mt-5 rounded-xl"
-            >
-              <Link to="/list-property">
-                <Plus className="mr-2 h-4 w-4" />
-                List Your Property
-              </Link>
-            </Button>
-
+            <p className="mt-2 text-sm text-muted-foreground">
+              {property.address}
+            </p>
           </div>
+
+          <Building2 className="h-5 w-5 shrink-0 text-primary" />
+        </div>
+
+        <div className="mt-4 flex items-center justify-between border-t border-border pt-4">
+          <span className="font-semibold">
+            ₹{Number(property.rent).toLocaleString("en-IN")}/month
+          </span>
+
+          <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+            {property.available ? "Available" : "Unavailable"}
+          </span>
+        </div>
+      </div>
+    ))
+  )}
+</div>
 
         </section>
 

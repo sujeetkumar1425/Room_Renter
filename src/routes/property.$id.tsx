@@ -23,16 +23,32 @@ import { Page } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-import { getProperty, formatINR, PROPERTIES } from "@/lib/data";
+import { formatINR } from "@/lib/data";
+import { fetchPropertyById, fetchListedProperties } from "@/lib/properties";
 import { PropertyCard } from "@/components/PropertyCard";
 import { useApp } from "@/lib/app-context";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/property/$id")({
-  loader: ({ params }) => {
-    const property = getProperty(params.id);
-    if (!property) throw notFound();
-    return { property };
+  loader: async ({ params }) => {
+    // Load the exact property from Supabase using the URL id.
+    const property = await fetchPropertyById(params.id);
+
+    if (!property) {
+      throw notFound();
+    }
+
+    // Load other currently listed properties for the "Similar rooms" section.
+    const listedProperties = await fetchListedProperties(property.city);
+
+    const similar = listedProperties
+      .filter((p) => p.id !== property.id)
+      .slice(0, 3);
+
+    return {
+      property,
+      similar,
+    };
   },
   head: ({ loaderData }) => {
     if (!loaderData) {
@@ -85,7 +101,7 @@ const amenityIcons: Record<string, typeof Wifi> = {
 const badges = ["Identity Verified", "Owner Verified", "Property Verified"];
 
 function PropertyPage() {
-  const { property } = Route.useLoaderData();
+  const { property, similar } = Route.useLoaderData();
   const { isSaved, toggleSaved } = useApp();
   const [active, setActive] = useState(0);
   const saved = isSaved(property.id);
@@ -96,8 +112,6 @@ function PropertyPage() {
     { label: "Owner support", value: 95 },
     { label: "Value for money", value: 84 },
   ];
-
-  const similar = PROPERTIES.filter((p) => p.id !== property.id).slice(0, 3);
 
   return (
     <Page>

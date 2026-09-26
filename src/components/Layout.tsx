@@ -295,19 +295,28 @@ export function Header() {
 
           <nav className="hidden items-center gap-1 lg:flex">
 
-            {navLinks.map((link) => (
-              <Link
-                key={link.to}
-                to={link.to}
-                className="rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                activeProps={{
-                  className:
-                    "text-foreground bg-muted",
-                }}
-              >
-                {link.label}
-              </Link>
-            ))}
+            {navLinks.map((link) => {
+              // Hide "List Your Property" only for renters
+              if (
+                link.to === "/list-property" &&
+                profile?.role === "renter"
+              ) {
+                return null;
+              }
+
+              return (
+                <Link
+                  key={link.to}
+                  to={link.to}
+                  className="rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  activeProps={{
+                    className: "text-foreground bg-muted",
+                  }}
+                >
+                  {link.label}
+                </Link>
+              );
+            })}
 
           </nav>
 
@@ -793,6 +802,7 @@ export function BottomNav() {
 ========================================================= */
 
 export function Footer() {
+  const { role } = useApp();
   return (
     <footer className="mt-16 border-t border-border bg-surface">
 
@@ -875,12 +885,11 @@ export function Footer() {
           <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
 
             <li>
-              <Link
-                to="/list-property"
-                className="hover:text-primary"
-              >
-                List your property
-              </Link>
+              {role !== "renter" && (
+                <Link to="/list-property">
+                  List Your Property
+                </Link>
+              )}
             </li>
 
             <li>

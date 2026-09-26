@@ -84,7 +84,13 @@ function ListPropertyPage() {
     gender: "Any",
   });
   const [picked, setPicked] = useState<string[]>(["Wi-Fi", "Attached Bathroom"]);
-  const [photos, setPhotos] = useState<string[]>([]);
+  type SelectedPhoto = {
+    file: File;
+    preview: string;
+  };
+
+  const [photos, setPhotos] = useState<SelectedPhoto[]>([]);
+  const [isPublishing, setIsPublishing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [rules, setRules] = useState({
     guests: true,
@@ -107,21 +113,63 @@ function ListPropertyPage() {
 
     if (!files.length) return;
 
-    const previews = files.map((file) => URL.createObjectURL(file));
+    const imageFiles = files.filter((file) => file.type.startsWith("image/"));
 
-    setPhotos((current) => [...current, ...previews]);
+    if (imageFiles.length !== files.length) {
+      toast.error("Only image files can be uploaded.");
+    }
+
+    const remainingSlots = Math.max(0, 6 - photos.length);
+    const filesToAdd = imageFiles.slice(0, remainingSlots);
+
+    if (imageFiles.length > remainingSlots) {
+      toast.error("You can upload a maximum of 6 photos.");
+    }
+
+    const selectedPhotos = filesToAdd.map((file) => ({
+      file,
+      preview: URL.createObjectURL(file),
+    }));
+
+    setPhotos((current) => [...current, ...selectedPhotos]);
 
     e.target.value = "";
   };
-  const removePhoto = (i: number) => setPhotos((p) => p.filter((_, idx) => idx !== i));
+
+  const removePhoto = (i: number) => {
+    setPhotos((current) => {
+      const photo = current[i];
+
+      if (photo) {
+        URL.revokeObjectURL(photo.preview);
+      }
+
+      return current.filter((_, idx) => idx !== i);
+    });
+  };
 
   const publish = async () => {
+    if (isPublishing) return;
+
+    setIsPublishing(true);
+    console.log("🔥 PUBLISH FUNCTION STARTED");
+
+    let createdPropertyId: number | string | null = null;
+    const uploadedPaths: string[] = [];
+
     try {
       const {
-        data: { session },
-      } = await supabase.auth.getSession();
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
 
-      if (!session) {
+      if (userError) {
+        console.error("Auth error:", userError);
+        toast.error(userError.message);
+        return;
+      }
+
+      if (!user) {
         toast.error("Please log in as a landlord first.");
         return;
       }
@@ -144,36 +192,130 @@ function ListPropertyPage() {
         return;
       }
 
-      const { data, error } = await supabase
+      /*
+       * IMPORTANT:
+       * The existing properties.id column is BIGINT/identity, not UUID.
+       * Therefore we DO NOT generate or insert a UUID into properties.id.
+       * Supabase/Postgres creates the numeric property id for us.
+       */
+      console.log("1️⃣ Creating property record...");
+
+      const { data: property, error: propertyError } = await supabase
         .from("properties")
         .insert({
-          landlord_id: session.user.id,
-          title: form.title,
-          description: form.description,
+          landlord_id: user.id,
+          title: form.title.trim(),
+          description: form.description.trim(),
           rent: Number(form.rent),
+          deposit: form.deposit ? Number(form.deposit) : 0,
           city: form.city,
-          address: form.address,
+          address: form.address.trim(),
+          locality: form.locality.trim(),
           room_type: form.roomType,
-          bedrooms: Number(form.occupancy),
+          bedrooms: Number(form.occupancy) || 1,
           bathrooms: 1,
           available: true,
+          furnished: form.furnished !== "Unfurnished",
+          gender: form.gender,
+          amenities: picked,
+          images: [],
         })
-        .select()
+        .select("id")
         .single();
 
-      if (error) {
-        console.error("Property insert error:", error);
-        toast.error(error.message);
+      if (propertyError || !property) {
+        console.error("Property creation error:", propertyError);
+        toast.error(
+          propertyError?.message || "Could not create the property.",
+        );
         return;
       }
 
-      console.log("Property created:", data);
+      createdPropertyId = property.id;
+      console.log("2️⃣ Property created with database id:", createdPropertyId);
 
+      const imageUrls: string[] = [];
+
+      /* Upload images AFTER obtaining the real database property id. */
+      for (let i = 0; i < photos.length; i++) {
+        const photo = photos[i];
+        const extension =
+          photo.file.name.split(".").pop()?.toLowerCase() || "jpg";
+
+        const filePath = `${user.id}/${createdPropertyId}/${i + 1}.${extension}`;
+
+        console.log(
+          `3️⃣ Uploading image ${i + 1}/${photos.length}:`,
+          filePath,
+        );
+
+        const { error: uploadError } = await supabase.storage
+          .from("property-images")
+          .upload(filePath, photo.file, {
+            cacheControl: "3600",
+            upsert: false,
+            contentType: photo.file.type || "image/jpeg",
+          });
+
+        if (uploadError) {
+          console.error("Image upload error:", uploadError);
+          throw new Error(
+            `Could not upload photo ${i + 1}: ${uploadError.message}`,
+          );
+        }
+
+        uploadedPaths.push(filePath);
+
+        const { data: publicData } = supabase.storage
+          .from("property-images")
+          .getPublicUrl(filePath);
+
+        imageUrls.push(publicData.publicUrl);
+      }
+
+      console.log("4️⃣ Images uploaded:", imageUrls);
+
+      /* Save the uploaded image URLs against the already-created property. */
+      const { error: imageUpdateError } = await supabase
+        .from("properties")
+        .update({ images: imageUrls })
+        .eq("id", createdPropertyId);
+
+      if (imageUpdateError) {
+        console.error("Image URL update error:", imageUpdateError);
+        throw new Error(
+          `Property was created, but images could not be saved: ${imageUpdateError.message}`,
+        );
+      }
+
+      photos.forEach((photo) => URL.revokeObjectURL(photo.preview));
+      setPhotos([]);
       toast.success("Property published successfully!");
       setStep(0);
+      console.log("🎉 PROPERTY PUBLISHED SUCCESSFULLY:", createdPropertyId);
     } catch (error) {
-      console.error("Unexpected error:", error);
-      toast.error("Something went wrong while publishing.");
+      console.error("Unexpected publish error:", error);
+
+      /* Clean up uploaded files if anything failed after upload. */
+      if (uploadedPaths.length > 0) {
+        await supabase.storage.from("property-images").remove(uploadedPaths);
+      }
+
+      /* Clean up the database row if we created one but publishing failed. */
+      if (createdPropertyId !== null) {
+        await supabase
+          .from("properties")
+          .delete()
+          .eq("id", createdPropertyId);
+      }
+
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Something went wrong while publishing.",
+      );
+    } finally {
+      setIsPublishing(false);
     }
   };
 
@@ -187,9 +329,9 @@ function ListPropertyPage() {
               Owners can add rooms in {ACTIVE_CITY} — other cities open soon.
             </p>
           </div>
-          {role !== "owner" && (
+          {role !== "landlord" && (
             <Button asChild variant="outline" className="rounded-xl">
-              <Link to="/login">Log in as owner</Link>
+              <Link to="/login">Log in as landlord</Link>
             </Button>
           )}
         </div>
@@ -404,15 +546,37 @@ function ListPropertyPage() {
               </>
               {photos.length > 0 && (
                 <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                  {photos.map((p, i) => (
-                    <div key={p} className="card-surface flex items-center justify-between gap-2 p-3 text-sm">
-                      <span className="truncate">
-                        {p}
-                        {i === 0 && <span className="ml-2 text-xs font-semibold text-primary">Cover</span>}
-                      </span>
-                      <button onClick={() => removePhoto(i)} aria-label={`Remove ${p}`}>
-                        <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
-                      </button>
+                  {photos.map((photo, i) => (
+                    <div
+                      key={photo.preview}
+                      className="card-surface overflow-hidden p-3 text-sm"
+                    >
+                      <div className="relative">
+                        <img
+                          src={photo.preview}
+                          alt={`Property photo ${i + 1}`}
+                          className="h-40 w-full rounded-xl object-cover"
+                        />
+
+                        {i === 0 && (
+                          <span className="absolute left-2 top-2 rounded-full bg-primary px-2.5 py-1 text-xs font-semibold text-primary-foreground">
+                            Cover
+                          </span>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={() => removePhoto(i)}
+                          aria-label={`Remove photo ${i + 1}`}
+                          className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-background/90 shadow"
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </button>
+                      </div>
+
+                      <p className="mt-2 truncate text-xs text-muted-foreground">
+                        {photo.file.name}
+                      </p>
                     </div>
                   ))}
                 </div>
@@ -493,7 +657,10 @@ function ListPropertyPage() {
                 Continue
               </Button>
             ) : (
-              <Button className="rounded-xl" onClick={publish}>
+              <Button type="button" className="rounded-xl" onClick={() => {
+                console.log("🔥 PUBLISH BUTTON CLICKED");
+                publish();
+              }}>
                 <Check className="h-4 w-4" /> Publish Property
               </Button>
             )}

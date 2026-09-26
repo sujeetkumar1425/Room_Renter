@@ -41,13 +41,13 @@ export const Route = createFileRoute("/login")({
 
 export const roleCards = [
   {
-    key: "seeker" as const,
+    key: "renter" as const,
     icon: Home,
     title: "Room Seeker",
     text: "Find and book verified rooms",
   },
   {
-    key: "owner" as const,
+    key: "landlord" as const,
     icon: Building2,
     title: "Property Owner",
     text: "List rooms and manage enquiries",
@@ -62,8 +62,8 @@ export function RoleSwitch({
   role,
   onChange,
 }: {
-  role: "seeker" | "owner";
-  onChange: (r: "seeker" | "owner") => void;
+  role: "renter" | "landlord";
+  onChange: (r: "renter" | "landlord") => void;
 }) {
   return (
     <div className="grid gap-3 sm:grid-cols-2">
@@ -111,10 +111,10 @@ export function RoleSwitch({
 
 function LoginPage() {
   const navigate = useNavigate();
-  //const { setRole } = useApp();
+  const { setRole } = useApp();
 
   const [role, setLocalRole] =
-    useState<"seeker" | "owner">("seeker");
+    useState<"renter" | "landlord">("renter");
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -203,24 +203,32 @@ function LoginPage() {
       // -----------------------------------------
       // 3. CHECK ROLE
       // -----------------------------------------
+      // -----------------------------------------
+      // 3. CHECK ROLE
+      // -----------------------------------------
 
-      // const userRole =
-      //   profile.role === "landlord"
-      //     ? "owner"
-      //     : "seeker";
+      if (
+        profile.role !== "landlord" &&
+        profile.role !== "renter"
+      ) {
+        toast.error("Invalid account role.");
 
-      // // Save role to your existing app context
-      // setRole(userRole);
+        await supabase.auth.signOut();
+
+        return;
+      }
+
+      // Save role to AppContext
+      setRole(profile.role);
 
       // -----------------------------------------
       // 4. SUCCESS
       // -----------------------------------------
 
       toast.success(
-        `Welcome back${
-          profile.full_name
-            ? `, ${profile.full_name}`
-            : ""
+        `Welcome back${profile.full_name
+          ? `, ${profile.full_name}`
+          : ""
         }!`,
       );
 
@@ -229,24 +237,24 @@ function LoginPage() {
       // -----------------------------------------
 
       if (profile.role === "landlord") {
-  navigate({
-    to: "/landlord",
-  });
-} else {
-  navigate({
-    to: "/search",
-    search: {
-      city: "Lucknow",
-    },
-  });
-}
+        navigate({
+          to: "/landlord",
+        });
+      } else {
+        navigate({
+          to: "/search",
+          search: {
+            city: "Lucknow",
+          },
+        });
+      }
     } catch (error: any) {
-  console.error("LOGIN ERROR:", error);
+      console.error("LOGIN ERROR:", error);
 
-  toast.error(
-    error?.message || "Something went wrong. Check the browser console."
-  );
-} finally {
+      toast.error(
+        error?.message || "Something went wrong. Check the browser console."
+      );
+    } finally {
       setLoading(false);
     }
   };
@@ -342,11 +350,10 @@ function LoginPage() {
 
               {loading
                 ? "Logging in..."
-                : `Continue as ${
-                    role === "owner"
-                      ? "Owner"
-                      : "Room Seeker"
-                  }`}
+                : `Continue as ${role === "owner"
+                  ? "Owner"
+                  : "Room Seeker"
+                }`}
             </Button>
           </form>
 

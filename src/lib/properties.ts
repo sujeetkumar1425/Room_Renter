@@ -1,230 +1,381 @@
-import room1 from "@/assets/room-1.jpg";
-import type { Property } from "@/lib/data";
 import { supabase } from "@/lib/supabase";
 
-export type DbProperty = {
-  id: string;
-  landlord_id: string;
-  title: string | null;
-  description: string | null;
-  rent: number | null;
-  deposit?: number | null;
-  city: string | null;
-  address: string | null;
-  locality?: string | null;
-  room_type: string | null;
-  bedrooms?: number | null;
-  bathrooms?: number | null;
-  available: boolean | null;
-  verified?: boolean | null;
-  furnished?: string | null;
-  gender?: string | null;
-  amenities?: string[] | null;
-  images?: string[] | null;
-  created_at?: string | null;
+/* ============================================================
+   PROPERTY TYPE
+============================================================ */
+
+export type Property = {
+  id: number;
+
+  landlordId?: string;
+
+  title: string;
+  description: string;
+
+  rent: number;
+  deposit: number;
+
+  city: string;
+  address: string;
+  locality: string;
+  area: string;
+
+  roomType: string;
+
+  bedrooms: number;
+  bathrooms: number;
+
+  available: boolean;
+
+  furnished: string | boolean;
+  gender: string;
+
+  amenities: string[];
+  images: string[];
+
+  verified: boolean;
+
+  rating: number;
+  reviews: number;
+
+  latitude: number | null;
+  longitude: number | null;
 };
 
-const validRoomTypes = [
-  "Single Room",
-  "Shared Room",
-  "1 BHK",
-  "2 BHK",
-  "Studio",
-  "PG",
-] as const;
 
-function getRoomType(value: string | null): Property["roomType"] {
-  if (
-    value &&
-    validRoomTypes.includes(
-      value as Property["roomType"]
-    )
-  ) {
-    return value as Property["roomType"];
-  }
+/* ============================================================
+   MAP SUPABASE ROW → APPLICATION PROPERTY
+============================================================ */
 
-  return "Single Room";
-}
-
-function getFurnished(
-  value: string | null
-): Property["furnished"] {
-  if (
-    value === "Semi Furnished" ||
-    value === "Unfurnished"
-  ) {
-    return value;
-  }
-
-  return "Fully Furnished";
-}
-
-function getGender(
-  value: string | null
-): Property["gender"] {
-  if (value === "Male" || value === "Female") {
-    return value;
-  }
-
-  return "Any";
-}
-
-export function mapDbProperty(
-  row: DbProperty
-): Property {
+function mapProperty(row: any): Property {
   return {
-    id: row.id,
+    /* -----------------------------
+       Basic information
+    ----------------------------- */
+
+    id: Number(row.id),
+
+    landlordId:
+      row.landlord_id ??
+      undefined,
 
     title:
-      row.title ||
-      "Room listing",
-
-    area:
-      row.locality ||
-      row.address ||
-      row.city ||
-      "Lucknow",
-
-    city:
-      row.city ||
-      "Lucknow",
-
-    rent:
-      Number(row.rent || 0),
-
-    deposit:
-      Number(row.deposit || 0),
-
-    rating: 0,
-
-    reviews: 0,
-
-    roomType:
-      getRoomType(row.room_type),
-
-    furnished:
-      getFurnished(row.furnished || null),
-
-    occupancy:
-      row.bedrooms
-        ? `${row.bedrooms} occupant${
-            row.bedrooms > 1 ? "s" : ""
-          }`
-        : "Flexible occupancy",
-
-    gender:
-      getGender(row.gender || null),
-
-    bathroom:
-      Number(row.bathrooms || 0) > 0
-        ? "Attached"
-        : "Shared",
-
-    food:
-      Boolean(
-        row.amenities?.includes("Food")
-      ),
-
-    parking:
-      Boolean(
-        row.amenities?.includes("Parking")
-      ),
-
-    verified:
-      Boolean(row.verified),
-
-    amenities:
-      row.amenities || [],
-
-    images:
-      row.images &&
-      row.images.length > 0
-        ? row.images
-        : [room1],
-
-    distance:
-      row.address ||
-      "Listed property",
-
-    available:
-      row.available
-        ? "Available now"
-        : "Currently unavailable",
+      row.title ??
+      "",
 
     description:
-      row.description ||
-      "No description provided.",
+      row.description ??
+      "",
 
-    nearby: [],
 
-    landlord: {
-      name: "Landlord",
-      photo:
-        "https://i.pravatar.cc/160?img=12",
-      rating: 0,
-      verified: false,
-      responseRate: 0,
-      responseTime: "Not available",
-      since: "Recently joined",
-      phone: "",
-    },
+    /* -----------------------------
+       Pricing
+    ----------------------------- */
 
-    reviewList: [],
+    rent:
+      Number(row.rent ?? 0),
 
-    coords: {
-      top: "50%",
-      left: "50%",
-    },
+    deposit:
+      Number(row.deposit ?? 0),
+
+
+    /* -----------------------------
+       Location
+    ----------------------------- */
+
+    city:
+      row.city ??
+      "",
+
+    address:
+      row.address ??
+      "",
+
+    locality:
+      row.locality ??
+      "",
+
+    area:
+      row.locality ??
+      row.area ??
+      "",
+
+
+    /* -----------------------------
+       Room details
+    ----------------------------- */
+
+    roomType:
+      row.room_type ??
+      "Single Room",
+
+    bedrooms:
+      Number(row.bedrooms ?? 1),
+
+    bathrooms:
+      Number(row.bathrooms ?? 1),
+
+
+    /* -----------------------------
+       Availability
+    ----------------------------- */
+
+    available:
+      row.available !== false,
+
+
+    /* -----------------------------
+       Furnishing / gender
+    ----------------------------- */
+
+    furnished:
+      row.furnished ??
+      false,
+
+    gender:
+      row.gender ??
+      "Any",
+
+
+    /* -----------------------------
+       Amenities
+    ----------------------------- */
+
+    amenities:
+      Array.isArray(row.amenities)
+        ? row.amenities
+        : [],
+
+
+    /* -----------------------------
+       Images
+    ----------------------------- */
+
+    images:
+      Array.isArray(row.images)
+        ? row.images
+        : [],
+
+
+    /* -----------------------------
+       Optional fields
+       
+       These may not exist in the
+       database, so we safely default.
+    ----------------------------- */
+
+    verified:
+      Boolean(row.verified ?? false),
+
+    rating:
+      Number(row.rating ?? 0),
+
+    reviews:
+      Number(row.reviews ?? 0),
+
+
+    /* -----------------------------
+       REAL MAP COORDINATES
+
+       These come directly from
+       Supabase.
+    ----------------------------- */
+
+    latitude:
+      row.latitude !== null &&
+      row.latitude !== undefined &&
+      row.latitude !== ""
+        ? Number(row.latitude)
+        : null,
+
+    longitude:
+      row.longitude !== null &&
+      row.longitude !== undefined &&
+      row.longitude !== ""
+        ? Number(row.longitude)
+        : null,
   };
 }
 
+
+/* ============================================================
+   FETCH LISTED PROPERTIES
+============================================================ */
+
 export async function fetchListedProperties(
-  city?: string
-) {
+  city?: string,
+): Promise<Property[]> {
   let query = supabase
     .from("properties")
-    .select("*")
-    .eq("available", true)
-    .order("created_at", {
-      ascending: false,
-    });
 
-  if (city) {
-    query = query.ilike(
+    /*
+     * IMPORTANT:
+     *
+     * Do NOT manually list columns here.
+     *
+     * select("*") prevents the query from failing
+     * when optional columns such as rating/reviews/
+     * verified are not present in the database.
+     */
+    .select("*")
+
+    .eq(
+      "available",
+      true,
+    )
+
+    .order(
+      "id",
+      {
+        ascending: false,
+      },
+    );
+
+
+  /* -----------------------------
+     Filter by city
+  ----------------------------- */
+
+  if (
+    city &&
+    city.trim()
+  ) {
+    query = query.eq(
       "city",
-      city
+      city.trim(),
     );
   }
 
-  const { data, error } =
-    await query;
+
+  /* -----------------------------
+     Execute query
+  ----------------------------- */
+
+  const {
+    data,
+    error,
+  } = await query;
+
+
+  /* -----------------------------
+     Error handling
+  ----------------------------- */
 
   if (error) {
-    throw error;
+    console.error(
+      "❌ fetchListedProperties error:",
+      error,
+    );
+
+    throw new Error(
+      error.message ||
+        "Unable to load listed properties.",
+    );
   }
 
-  return (
-    (data || []) as DbProperty[]
-  ).map(mapDbProperty);
+
+  /* -----------------------------
+     Convert rows
+  ----------------------------- */
+
+  const properties =
+    (data ?? []).map(
+      mapProperty,
+    );
+
+
+  console.log(
+    "✅ Listed properties:",
+    properties,
+  );
+
+
+  return properties;
 }
 
-export async function fetchPropertyById(
-  id: string
-) {
-  const { data, error } =
-    await supabase
-      .from("properties")
-      .select("*")
-      .eq("id", id)
-      .maybeSingle();
 
-  if (error) {
-    throw error;
+/* ============================================================
+   FETCH SINGLE PROPERTY
+============================================================ */
+
+export async function fetchPropertyById(
+  id: string | number,
+): Promise<Property | null> {
+
+  const numericId =
+    Number(id);
+
+
+  /* -----------------------------
+     Validate ID
+  ----------------------------- */
+
+  if (
+    !Number.isFinite(
+      numericId,
+    )
+  ) {
+    console.error(
+      "❌ Invalid property ID:",
+      id,
+    );
+
+    return null;
   }
 
-  return data
-    ? mapDbProperty(
-        data as DbProperty
-      )
-    : null;
+
+  /* -----------------------------
+     Query Supabase
+  ----------------------------- */
+
+  const {
+    data,
+    error,
+  } = await supabase
+
+    .from("properties")
+
+    .select("*")
+
+    .eq(
+      "id",
+      numericId,
+    )
+
+    .maybeSingle();
+
+
+  /* -----------------------------
+     Error handling
+  ----------------------------- */
+
+  if (error) {
+    console.error(
+      "❌ fetchPropertyById error:",
+      error,
+    );
+
+    throw new Error(
+      error.message ||
+        "Unable to load property.",
+    );
+  }
+
+
+  /* -----------------------------
+     Property not found
+  ----------------------------- */
+
+  if (!data) {
+    return null;
+  }
+
+
+  /* -----------------------------
+     Convert row
+  ----------------------------- */
+
+  return mapProperty(
+    data,
+  );
 }

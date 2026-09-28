@@ -24,10 +24,12 @@ export type PropertyLandlord = {
   since: string;
   responseRate: number;
   responseTime: string;
+  phone: string;
+  identityVerified: boolean;
 };
 
 export type Property = {
-  id: number;
+  id: string;
 
   landlordId?: string;
 
@@ -334,9 +336,9 @@ function mapProperty(
        ID
     -------------------------------------------------------- */
 
-    id: toNumber(
+    id: toStringValue(
       row?.id,
-      0,
+      "",
     ),
 
 
@@ -502,13 +504,17 @@ function mapProperty(
 
     rating:
       toNumber(
-        row?.rating,
+        row?.rating ??
+          row?.average_rating ??
+          row?.avg_rating,
         0,
       ),
 
     reviews:
       toNumber(
-        row?.reviews,
+        row?.review_count ??
+          row?.reviews ??
+          row?.reviews_count,
         0,
       ),
 
@@ -576,6 +582,20 @@ function mapProperty(
         toStringValue(
           landlordData?.responseTime,
           "Usually responds quickly",
+        ),
+
+      phone:
+        toStringValue(
+          row?.landlord_phone ??
+            landlordData?.phone,
+          "",
+        ),
+
+      identityVerified:
+        Boolean(
+          row?.landlord_identity_verified ??
+            landlordData?.identityVerified ??
+            false,
         ),
     },
   };

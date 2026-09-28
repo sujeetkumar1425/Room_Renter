@@ -14,6 +14,9 @@ import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as LandlordRouteImport } from './routes/landlord'
 import { Route as ListPropertyRouteImport } from './routes/list-property'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as MessagesRouteImport } from './routes/messages'
+import { Route as NotificationsRouteImport } from './routes/notifications'
+import { Route as SavedRouteImport } from './routes/saved'
 import { Route as SearchRouteImport } from './routes/search'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as PropertyIdRouteImport } from './routes/property.$id'
@@ -43,6 +46,21 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MessagesRoute = MessagesRouteImport.update({
+  id: '/messages',
+  path: '/messages',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NotificationsRoute = NotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SavedRoute = SavedRouteImport.update({
+  id: '/saved',
+  path: '/saved',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SearchRoute = SearchRouteImport.update({
   id: '/search',
   path: '/search',
@@ -65,6 +83,9 @@ export interface FileRoutesByFullPath {
   '/landlord': typeof LandlordRoute
   '/list-property': typeof ListPropertyRoute
   '/login': typeof LoginRoute
+  '/messages': typeof MessagesRoute
+  '/notifications': typeof NotificationsRoute
+  '/saved': typeof SavedRoute
   '/search': typeof SearchRoute
   '/signup': typeof SignupRoute
   '/property/$id': typeof PropertyIdRoute
@@ -75,6 +96,9 @@ export interface FileRoutesByTo {
   '/landlord': typeof LandlordRoute
   '/list-property': typeof ListPropertyRoute
   '/login': typeof LoginRoute
+  '/messages': typeof MessagesRoute
+  '/notifications': typeof NotificationsRoute
+  '/saved': typeof SavedRoute
   '/search': typeof SearchRoute
   '/signup': typeof SignupRoute
   '/property/$id': typeof PropertyIdRoute
@@ -86,6 +110,9 @@ export interface FileRoutesById {
   '/landlord': typeof LandlordRoute
   '/list-property': typeof ListPropertyRoute
   '/login': typeof LoginRoute
+  '/messages': typeof MessagesRoute
+  '/notifications': typeof NotificationsRoute
+  '/saved': typeof SavedRoute
   '/search': typeof SearchRoute
   '/signup': typeof SignupRoute
   '/property/$id': typeof PropertyIdRoute
@@ -98,6 +125,9 @@ export interface FileRouteTypes {
     | '/landlord'
     | '/list-property'
     | '/login'
+    | '/messages'
+    | '/notifications'
+    | '/saved'
     | '/search'
     | '/signup'
     | '/property/$id'
@@ -108,6 +138,9 @@ export interface FileRouteTypes {
     | '/landlord'
     | '/list-property'
     | '/login'
+    | '/messages'
+    | '/notifications'
+    | '/saved'
     | '/search'
     | '/signup'
     | '/property/$id'
@@ -118,6 +151,9 @@ export interface FileRouteTypes {
     | '/landlord'
     | '/list-property'
     | '/login'
+    | '/messages'
+    | '/notifications'
+    | '/saved'
     | '/search'
     | '/signup'
     | '/property/$id'
@@ -129,6 +165,9 @@ export interface RootRouteChildren {
   LandlordRoute: typeof LandlordRoute
   ListPropertyRoute: typeof ListPropertyRoute
   LoginRoute: typeof LoginRoute
+  MessagesRoute: typeof MessagesRoute
+  NotificationsRoute: typeof NotificationsRoute
+  SavedRoute: typeof SavedRoute
   SearchRoute: typeof SearchRoute
   SignupRoute: typeof SignupRoute
   PropertyIdRoute: typeof PropertyIdRoute
@@ -171,6 +210,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/messages': {
+      id: '/messages'
+      path: '/messages'
+      fullPath: '/messages'
+      preLoaderRoute: typeof MessagesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/notifications': {
+      id: '/notifications'
+      path: '/notifications'
+      fullPath: '/notifications'
+      preLoaderRoute: typeof NotificationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/saved': {
+      id: '/saved'
+      path: '/saved'
+      fullPath: '/saved'
+      preLoaderRoute: typeof SavedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/search': {
       id: '/search'
       path: '/search'
@@ -201,6 +261,9 @@ const rootRouteChildren: RootRouteChildren = {
   LandlordRoute: LandlordRoute,
   ListPropertyRoute: ListPropertyRoute,
   LoginRoute: LoginRoute,
+  MessagesRoute: MessagesRoute,
+  NotificationsRoute: NotificationsRoute,
+  SavedRoute: SavedRoute,
   SearchRoute: SearchRoute,
   SignupRoute: SignupRoute,
   PropertyIdRoute: PropertyIdRoute,

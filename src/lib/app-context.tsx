@@ -116,6 +116,43 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 }, []);
 
+  useEffect(() => {
+    let mounted = true;
+
+    const syncSavedRooms = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user || !mounted) return;
+
+      const { data, error } = await supabase
+        .from("saved_properties")
+        .select("property_id")
+        .eq("user_id", user.id);
+
+      if (error || !mounted) return;
+
+      const ids = (data ?? [])
+        .map((row) => String(row.property_id))
+        .filter(Boolean);
+
+      setSaved(ids);
+
+      try {
+        localStorage.setItem(SAVED_KEY, JSON.stringify(ids));
+      } catch {
+        /* storage unavailable */
+      }
+    };
+
+    syncSavedRooms();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   const setCity = (next: string, nextStatus: LocationStatus = "manual") => {
     setCityState(next);
     setStatus(nextStatus);
@@ -129,14 +166,52 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const toggleSaved = (id: string) => {
     setSaved((prev) => {
-      const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
+      const next = prev.includes(id)
+        ? prev.filter((x) => x !== id)
+        : [...prev, id];
+
       try {
         localStorage.setItem(SAVED_KEY, JSON.stringify(next));
       } catch {
         /* storage unavailable */
       }
+
       return next;
     });
+
+    // Persist saved rooms for authenticated renters.
+    void (async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) return;
+
+      const propertyId = Number(id);
+      if (!Number.isFinite(propertyId)) return;
+
+      if (saved.includes(id)) {
+        const { error } = await supabase
+          .from("saved_properties")
+          .delete()
+          .eq("user_id", user.id)
+          .eq("property_id", propertyId);
+
+        if (error) console.error("Remove saved room:", error);
+      } else {
+        const { error } = await supabase
+          .from("saved_properties")
+          .upsert(
+            {
+              user_id: user.id,
+              property_id: propertyId,
+            },
+            { onConflict: "user_id,property_id" },
+          );
+
+        if (error) console.error("Save room:", error);
+      }
+    })();
   };
 
  const value = useMemo<AppState>(

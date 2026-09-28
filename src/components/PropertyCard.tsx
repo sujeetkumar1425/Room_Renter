@@ -63,8 +63,12 @@ export function PropertyCard({
           </Link>
           <span className="flex shrink-0 items-center gap-1 text-sm font-medium">
             <Star className="h-3.5 w-3.5 fill-warning text-warning" />
-            {property.rating}
-            <span className="text-xs text-muted-foreground">({property.reviews})</span>
+            {property.reviews > 0 ? property.rating.toFixed(1) : "New"}
+            {property.reviews > 0 && (
+              <span className="text-xs text-muted-foreground">
+                ({property.reviews})
+              </span>
+            )}
           </span>
         </div>
 

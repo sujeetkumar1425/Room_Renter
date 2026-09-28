@@ -46,6 +46,7 @@ import {
 import { useApp } from "@/lib/app-context";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
+import { LandlordVerificationCard } from "@/components/LandlordVerificationCard";
 
 export const Route = createFileRoute("/list-property")({
   head: () => ({
@@ -323,6 +324,41 @@ function ListPropertyPage() {
         return;
       }
 
+      // Load the real landlord details before creating the listing.
+      const { data: landlordProfile, error: landlordProfileError } =
+        await supabase
+          .from("profiles")
+          .select("full_name, phone, permanent_address, aadhaar_last4, aadhaar_verified")
+          .eq("id", user.id)
+          .maybeSingle();
+
+      if (landlordProfileError) {
+        toast.error("Could not load your landlord verification details.");
+        return;
+      }
+
+      const phone = landlordProfile?.phone?.trim() ?? "";
+      const permanentAddress = landlordProfile?.permanent_address?.trim() ?? "";
+      const aadhaarLast4 = landlordProfile?.aadhaar_last4?.trim() ?? "";
+      const landlordName =
+        landlordProfile?.full_name?.trim() ||
+        user.user_metadata?.full_name ||
+        user.email?.split("@")[0] ||
+        "Property Owner";
+
+      if (
+        !landlordName ||
+        !/^[6-9]\d{9}$/.test(phone.replace(/\D/g, "")) ||
+        permanentAddress.length < 10 ||
+        !/^\d{4}$/.test(aadhaarLast4)
+      ) {
+        toast.error(
+          "Complete the landlord identity details at the top of this page before publishing.",
+        );
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
+
       if (!form.title.trim()) {
         toast.error("Please enter a listing title.");
         setStep(0);
@@ -360,6 +396,11 @@ function ListPropertyPage() {
         .from("properties")
         .insert({
           landlord_id: user.id,
+          landlord_name: landlordName,
+          landlord_phone: phone.replace(/\D/g, ""),
+          landlord_identity_verified: Boolean(
+            landlordProfile?.aadhaar_verified,
+          ),
           title: form.title.trim(),
           description: form.description.trim(),
           rent: Number(form.rent),
@@ -556,6 +597,8 @@ function ListPropertyPage() {
   return (
     <Page>
       <div className="container-page py-8 sm:py-12">
+
+        <LandlordVerificationCard />
 
         {/* HEADER */}
 

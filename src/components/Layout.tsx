@@ -78,27 +78,7 @@ const navLinks = [
    NOTIFICATIONS
 ========================================================= */
 
-const notifications = [
-  {
-    title: "Anjali Verma replied to your enquiry",
-    time: "2 min ago",
-  },
-  {
-    title:
-      "Visit reminder — Gomti Nagar room, tomorrow 11:00 AM",
-    time: "1 hr ago",
-  },
-  {
-    title:
-      "Rental agreement received from Rajeev Srivastava",
-    time: "Yesterday",
-  },
-  {
-    title:
-      "A saved room dropped its rent by ₹500",
-    time: "2 days ago",
-  },
-];
+
 
 
 /* =========================================================
@@ -145,6 +125,7 @@ export function Header() {
   } | null>(null);
 
   const [authLoading, setAuthLoading] = useState(true);
+  const [notificationCount, setNotificationCount] = useState(0);
 
 
   /* -------------------------------------------------------
@@ -185,6 +166,27 @@ export function Header() {
 
 
     loadUser();
+
+    const loadNotificationCount = async () => {
+      const {
+        data: { user: currentUser },
+      } = await supabase.auth.getUser();
+
+      if (!currentUser || !mounted) {
+        if (mounted) setNotificationCount(0);
+        return;
+      }
+
+      const { count } = await supabase
+        .from("notifications")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", currentUser.id)
+        .is("read_at", null);
+
+      if (mounted) setNotificationCount(count ?? 0);
+    };
+
+    void loadNotificationCount();
 
 
     /* -----------------------------------------------------
@@ -353,7 +355,11 @@ export function Header() {
 
                 <Bell className="h-[18px] w-[18px]" />
 
-                <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-destructive" />
+                {notificationCount > 0 && (
+                  <span className="absolute -right-1 -top-1 flex min-h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-bold text-destructive-foreground">
+                    {notificationCount > 9 ? "9+" : notificationCount}
+                  </span>
+                )}
 
               </Button>
 
@@ -372,24 +378,20 @@ export function Header() {
               <DropdownMenuSeparator />
 
 
-              {notifications.map((notification) => (
-
-                <DropdownMenuItem
-                  key={notification.title}
-                  className="flex-col items-start gap-0.5 rounded-xl py-2.5"
+              <DropdownMenuItem asChild>
+                <Link
+                  to="/notifications"
+                  className="cursor-pointer rounded-xl py-3"
                 >
-
-                  <span className="text-sm font-medium leading-snug">
-                    {notification.title}
-                  </span>
-
-                  <span className="text-xs text-muted-foreground">
-                    {notification.time}
-                  </span>
-
-                </DropdownMenuItem>
-
-              ))}
+                  <Bell className="mr-2 h-4 w-4" />
+                  Open all notifications
+                  {notificationCount > 0 && (
+                    <span className="ml-auto text-xs text-muted-foreground">
+                      {notificationCount} unread
+                    </span>
+                  )}
+                </Link>
+              </DropdownMenuItem>
 
             </DropdownMenuContent>
 
@@ -586,17 +588,24 @@ export function Header() {
 
                 {/* NAVIGATION */}
 
-                {navLinks.map((link) => (
+                {navLinks.map((link) => {
+                  if (
+                    link.to === "/list-property" &&
+                    profile?.role === "renter"
+                  ) {
+                    return null;
+                  }
 
-                  <Link
-                    key={link.to}
-                    to={link.to}
-                    className="rounded-xl px-3 py-2.5 font-medium hover:bg-muted"
-                  >
-                    {link.label}
-                  </Link>
-
-                ))}
+                  return (
+                    <Link
+                      key={link.to}
+                      to={link.to}
+                      className="rounded-xl px-3 py-2.5 font-medium hover:bg-muted"
+                    >
+                      {link.label}
+                    </Link>
+                  );
+                })}
 
 
                 {/* =================================================
@@ -629,6 +638,36 @@ export function Header() {
                       </p>
 
                     </div>
+
+
+                    <Link
+                      to="/saved"
+                      className="flex items-center gap-2 rounded-xl px-3 py-2.5 font-medium hover:bg-muted"
+                    >
+                      <Heart className="h-4 w-4" />
+                      Saved Rooms
+                    </Link>
+
+                    <Link
+                      to="/messages"
+                      className="flex items-center gap-2 rounded-xl px-3 py-2.5 font-medium hover:bg-muted"
+                    >
+                      <MessageSquare className="h-4 w-4" />
+                      Messages
+                    </Link>
+
+                    <Link
+                      to="/notifications"
+                      className="flex items-center gap-2 rounded-xl px-3 py-2.5 font-medium hover:bg-muted"
+                    >
+                      <Bell className="h-4 w-4" />
+                      Notifications
+                      {notificationCount > 0 && (
+                        <span className="ml-auto rounded-full bg-destructive px-1.5 py-0.5 text-[10px] font-bold text-destructive-foreground">
+                          {notificationCount}
+                        </span>
+                      )}
+                    </Link>
 
 
                     {/* ROLE-SPECIFIC DASHBOARD */}

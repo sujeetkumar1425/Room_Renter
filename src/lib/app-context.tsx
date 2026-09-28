@@ -46,76 +46,113 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<LocationStatus>("unknown");
   const [saved, setSaved] = useState<string[]>([]);
   const [ready, setReady] = useState(false);
-  //const [role, setRole] = useState<UserRole>(null);
   const [showLocationModal, setShowLocationModal] = useState(false);
 
+  /* ==========================================================
+     RESTORE LOCAL SETTINGS
+  ========================================================== */
   useEffect(() => {
     try {
-      const c = localStorage.getItem(CITY_KEY);
-      const s = localStorage.getItem(STATUS_KEY) as LocationStatus | null;
-      const sv = localStorage.getItem(SAVED_KEY);
-      if (c) setCityState(c);
-      if (s) setStatus(s);
-      if (sv) setSaved(JSON.parse(sv));
-      if (!c) setShowLocationModal(true);
+      const storedCity = localStorage.getItem(CITY_KEY);
+      const storedStatus = localStorage.getItem(
+        STATUS_KEY,
+      ) as LocationStatus | null;
+
+      const storedSaved = localStorage.getItem(SAVED_KEY);
+
+      if (storedCity) {
+        setCityState(storedCity);
+      }
+
+      if (storedStatus) {
+        setStatus(storedStatus);
+      }
+
+      if (storedSaved) {
+        try {
+          const parsed = JSON.parse(storedSaved);
+
+          if (Array.isArray(parsed)) {
+            setSaved(
+              parsed
+                .map((id) => String(id))
+                .filter(Boolean),
+            );
+          }
+        } catch {
+          localStorage.removeItem(SAVED_KEY);
+        }
+      }
+
+      if (!storedCity) {
+        setShowLocationModal(true);
+      }
     } catch {
       setShowLocationModal(true);
     }
+
     setReady(true);
   }, []);
+
+  /* ==========================================================
+     RESTORE AUTH + ROLE
+  ========================================================== */
   useEffect(() => {
-  let mounted = true;
+    let mounted = true;
 
-  const restoreAuth = async () => {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    const restoreAuth = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
 
-    if (!mounted) return;
-
-    if (!session?.user) {
-      setRole(null);
-      return;
-    }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", session.user.id)
-      .single();
-
-    if (!mounted) return;
-
-    if (
-      profile?.role === "renter" ||
-      profile?.role === "landlord"
-    ) {
-      setRole(profile.role);
-    } else {
-      setRole(null);
-    }
-  };
-
-  restoreAuth();
-
-  const {
-    data: { subscription },
-  } = supabase.auth.onAuthStateChange(
-    (_event, session) => {
       if (!mounted) return;
 
       if (!session?.user) {
         setRole(null);
+        return;
       }
-    },
-  );
 
-  return () => {
-    mounted = false;
-    subscription.unsubscribe();
-  };
-}, []);
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", session.user.id)
+        .maybeSingle();
 
+      if (!mounted) return;
+
+      if (
+        profile?.role === "renter" ||
+        profile?.role === "landlord"
+      ) {
+        setRole(profile.role);
+      } else {
+        setRole(null);
+      }
+    };
+
+    restoreAuth();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        if (!mounted) return;
+
+        if (!session?.user) {
+          setRole(null);
+        }
+      },
+    );
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  /* ==========================================================
+     LOAD SAVED ROOMS FROM SUPABASE
+  ========================================================== */
   useEffect(() => {
     let mounted = true;
 
@@ -131,7 +168,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
         .select("property_id")
         .eq("user_id", user.id);
 
-      if (error || !mounted) return;
+      if (error) {
+        console.error(
+          "❌ Could not load saved rooms:",
+          error,
+        );
+        return;
+      }
+
+      if (!mounted) return;
 
       const ids = (data ?? [])
         .map((row) => String(row.property_id))
@@ -140,7 +185,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setSaved(ids);
 
       try {
-        localStorage.setItem(SAVED_KEY, JSON.stringify(ids));
+        localStorage.setItem(
+          SAVED_KEY,
+          JSON.stringify(ids),
+        );
       } catch {
         /* storage unavailable */
       }
@@ -153,103 +201,179 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const setCity = (next: string, nextStatus: LocationStatus = "manual") => {
+  /* ==========================================================
+     CITY
+  ========================================================== */
+  const setCity = (
+    next: string,
+    nextStatus: LocationStatus = "manual",
+  ) => {
     setCityState(next);
     setStatus(nextStatus);
+
     try {
       localStorage.setItem(CITY_KEY, next);
-      localStorage.setItem(STATUS_KEY, nextStatus);
+      localStorage.setItem(
+        STATUS_KEY,
+        nextStatus,
+      );
     } catch {
       /* storage unavailable */
     }
   };
 
+  /* ==========================================================
+     SAVE / UNSAVE ROOM
+  ========================================================== */
   const toggleSaved = (id: string) => {
-    setSaved((prev) => {
-      const next = prev.includes(id)
-        ? prev.filter((x) => x !== id)
-        : [...prev, id];
+    const propertyId = String(id);
 
-      try {
-        localStorage.setItem(SAVED_KEY, JSON.stringify(next));
-      } catch {
-        /* storage unavailable */
-      }
+    const wasSaved = saved.includes(propertyId);
 
-      return next;
-    });
+    const next = wasSaved
+      ? saved.filter(
+          (savedId) => savedId !== propertyId,
+        )
+      : [...saved, propertyId];
 
-    // Persist saved rooms for authenticated renters.
+    /* Update UI immediately */
+    setSaved(next);
+
+    /* Persist local backup */
+    try {
+      localStorage.setItem(
+        SAVED_KEY,
+        JSON.stringify(next),
+      );
+    } catch {
+      /* storage unavailable */
+    }
+
+    /* Persist in Supabase */
     void (async () => {
       const {
         data: { user },
       } = await supabase.auth.getUser();
 
-      if (!user) return;
+      if (!user) {
+        return;
+      }
 
-      const propertyId = Number(id);
-      if (!Number.isFinite(propertyId)) return;
+      const numericPropertyId = Number(propertyId);
 
-      if (saved.includes(id)) {
+      if (!Number.isFinite(numericPropertyId)) {
+        console.error(
+          "❌ Invalid property ID:",
+          propertyId,
+        );
+        return;
+      }
+
+      if (wasSaved) {
         const { error } = await supabase
           .from("saved_properties")
           .delete()
           .eq("user_id", user.id)
-          .eq("property_id", propertyId);
-
-        if (error) console.error("Remove saved room:", error);
-      } else {
-        const { error } = await supabase
-          .from("saved_properties")
-          .upsert(
-            {
-              user_id: user.id,
-              property_id: propertyId,
-            },
-            { onConflict: "user_id,property_id" },
+          .eq(
+            "property_id",
+            numericPropertyId,
           );
 
-        if (error) console.error("Save room:", error);
+        if (error) {
+          console.error(
+            "❌ Remove saved room:",
+            error,
+          );
+
+          /* Restore UI if database operation failed */
+          setSaved(saved);
+          return;
+        }
+
+        return;
+      }
+
+      const { error } = await supabase
+        .from("saved_properties")
+        .upsert(
+          {
+            user_id: user.id,
+            property_id: numericPropertyId,
+          },
+          {
+            onConflict: "user_id,property_id",
+          },
+        );
+
+      if (error) {
+        console.error(
+          "❌ Save room:",
+          error,
+        );
+
+        /* Restore UI if database operation failed */
+        setSaved(saved);
+        return;
       }
     })();
   };
 
- const value = useMemo<AppState>(
-  () => ({
-    role,
-    setRole,
+  const value = useMemo<AppState>(
+    () => ({
+      role,
+      setRole,
 
-    city,
-    status,
-    cityAvailable: isCityAvailable(city),
-    ready,
-    showLocationModal,
+      city,
+      status,
 
-    openLocationModal: () => setShowLocationModal(true),
-    closeLocationModal: () => setShowLocationModal(false),
+      cityAvailable: isCityAvailable(city),
 
-    setCity,
-    setStatus,
+      ready,
 
-    saved,
-    toggleSaved,
-    isSaved: (id: string) => saved.includes(id),
-  }),
-  [
-  role,
-  city,
-  status,
-  saved,
-  ready,
-  showLocationModal,
-],
-);
-  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+      showLocationModal,
+
+      openLocationModal: () =>
+        setShowLocationModal(true),
+
+      closeLocationModal: () =>
+        setShowLocationModal(false),
+
+      setCity,
+      setStatus,
+
+      saved,
+
+      toggleSaved,
+
+      isSaved: (id: string) =>
+        saved.includes(String(id)),
+    }),
+    [
+      role,
+      city,
+      status,
+      saved,
+      ready,
+      showLocationModal,
+    ],
+  );
+
+  return (
+    <Ctx.Provider value={value}>
+      {children}
+    </Ctx.Provider>
+  );
 }
 
 export function useApp() {
   const ctx = useContext(Ctx);
-  if (!ctx) throw new Error("useApp must be used inside AppProvider");
+
+  if (!ctx) {
+    throw new Error(
+      "useApp must be used inside AppProvider",
+    );
+  }
+
   return ctx;
 }
 

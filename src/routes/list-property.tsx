@@ -337,9 +337,15 @@ function ListPropertyPage() {
         return;
       }
 
-      const phone = landlordProfile?.phone?.trim() ?? "";
-      const permanentAddress = landlordProfile?.permanent_address?.trim() ?? "";
-      const aadhaarLast4 = landlordProfile?.aadhaar_last4?.trim() ?? "";
+      // Supabase may return phone/aadhaar_last4 as BIGINT.
+      // Convert them to strings before validation.
+      const phone = String(landlordProfile?.phone ?? "").trim();
+      const permanentAddress = String(
+        landlordProfile?.permanent_address ?? "",
+      ).trim();
+      const aadhaarLast4 = String(
+        landlordProfile?.aadhaar_last4 ?? "",
+      ).trim();
       const landlordName =
         landlordProfile?.full_name?.trim() ||
         user.user_metadata?.full_name ||

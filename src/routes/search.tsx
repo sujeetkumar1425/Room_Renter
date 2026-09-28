@@ -1165,7 +1165,7 @@ function SearchPage() {
   // ==========================================================
 
   const MapPanel = (
-    <div className="relative h-[70vh] overflow-hidden rounded-2xl border border-border bg-muted lg:h-[calc(100vh-9rem)]">
+    <div className="relative h-[min(68vh,620px)] min-h-[420px] w-full overflow-hidden rounded-2xl border border-border bg-muted lg:h-[calc(100vh-9rem)] lg:min-h-[520px]">
 
       {/* REAL LEAFLET MAP */}
       <div
@@ -1421,7 +1421,7 @@ function SearchPage() {
            MAIN CONTENT
         ==================================================== */
 
-        <div className="container-page grid gap-6 py-6 lg:grid-cols-[260px_1fr_460px]">
+        <div className="container-page grid min-w-0 gap-6 py-6 lg:grid-cols-[240px_minmax(0,1fr)_minmax(360px,460px)]">
 
 
           {/* =================================================

@@ -54,6 +54,7 @@ import { PropertyCard } from "@/components/PropertyCard";
 import { useApp } from "@/lib/app-context";
 
 import { cn } from "@/lib/utils";
+import { PropertyReviews } from "@/components/PropertyReviews";
 
 
 // ============================================================
@@ -1319,200 +1320,15 @@ function PropertyPage() {
 
 
             {/* =================================================
-                REVIEWS
+                REAL REVIEWS
             ================================================== */}
 
-            <section>
-
-              <h2 className="text-lg font-bold">
-                Reviews & trust
-              </h2>
-
-
-              <div className="mt-3 grid gap-5 rounded-2xl border border-border p-5 sm:grid-cols-[160px_1fr]">
-
-                {/* RATING */}
-
-                <div className="text-center sm:text-left">
-
-                  <p className="text-4xl font-extrabold">
-                    {
-                      property.rating
-                    }
-                  </p>
-
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {
-                      property.reviews
-                    }{" "}
-                    reviews
-                  </p>
-
-
-                  <div className="mt-2 flex justify-center gap-0.5 sm:justify-start">
-
-                    {[
-                      1,
-                      2,
-                      3,
-                      4,
-                      5,
-                    ].map(
-                      (number) => (
-                        <Star
-                          key={
-                            number
-                          }
-                          className={cn(
-                            "h-4 w-4",
-
-                            number <=
-                              Math.round(
-                                property.rating,
-                              )
-                              ? "fill-warning text-warning"
-                              : "text-border",
-                          )}
-                        />
-                      ),
-                    )}
-
-                  </div>
-
-                </div>
-
-
-                {/* BREAKDOWN */}
-
-                <div className="space-y-2.5">
-
-                  {breakdown.map(
-                    (item) => (
-                      <div
-                        key={
-                          item.label
-                        }
-                        className="flex items-center gap-3"
-                      >
-
-                        <span className="w-32 text-sm text-muted-foreground">
-                          {
-                            item.label
-                          }
-                        </span>
-
-                        <Progress
-                          value={
-                            item.value
-                          }
-                          className="h-2 flex-1"
-                        />
-
-                        <span className="w-9 text-right text-xs font-medium">
-                          {(
-                            item.value /
-                            20
-                          ).toFixed(
-                            1,
-                          )}
-                        </span>
-
-                      </div>
-                    ),
-                  )}
-
-                </div>
-
-              </div>
-
-
-              {/* REVIEW LIST */}
-
-              {property.reviewList.length >
-                0 && (
-                <div className="mt-4 space-y-3">
-
-                  {property.reviewList.map(
-                    (
-                      review,
-                    ) => (
-                      <div
-                        key={
-                          review.name +
-                          review.date
-                        }
-                        className="card-surface p-4"
-                      >
-
-                        <div className="flex items-center gap-3">
-
-                          {review.avatar ? (
-                            <img
-                              src={
-                                review.avatar
-                              }
-                              alt={
-                                review.name
-                              }
-                              width={40}
-                              height={40}
-                              loading="lazy"
-                              className="h-10 w-10 rounded-full object-cover"
-                            />
-                          ) : (
-                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-sm font-bold">
-                              {
-                                review.name
-                                  .charAt(
-                                    0,
-                                  )
-                              }
-                            </div>
-                          )}
-
-                          <div>
-
-                            <p className="text-sm font-semibold">
-
-                              {
-                                review.name
-                              }
-
-                              <span className="ml-1 rounded-full bg-accent px-2 py-0.5 text-[10px] font-semibold text-accent-foreground">
-                                Verified Renter
-                              </span>
-
-                            </p>
-
-                            <p className="text-xs text-muted-foreground">
-                              {
-                                review.date
-                              }{" "}
-                              · ★{" "}
-                              {
-                                review.rating
-                              }
-                            </p>
-
-                          </div>
-
-                        </div>
-
-
-                        <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-                          {
-                            review.text
-                          }
-                        </p>
-
-                      </div>
-                    ),
-                  )}
-
-                </div>
-              )}
-
-            </section>
+            <PropertyReviews
+              propertyId={Number(property.id)}
+              landlordId={property.landlordId}
+              initialRating={property.rating}
+              initialReviewCount={property.reviews}
+            />
 
           </div>
 
@@ -1562,11 +1378,17 @@ function PropertyPage() {
                   size="lg"
                   className="w-full rounded-xl"
                 >
-                  <Link to="/messages">
+                  <Link
+                    to="/messages"
+                    search={{
+                      propertyId: String(property.id),
+                      landlordId: property.landlordId ?? "",
+                    }}
+                  >
 
                     <Phone className="h-4 w-4" />
 
-                    Contact Owner
+                    Message Owner
 
                   </Link>
                 </Button>
@@ -1724,6 +1546,17 @@ function PropertyPage() {
               </div>
 
 
+              {property.landlord.phone && (
+                <div className="mt-3 rounded-xl bg-muted px-3 py-2">
+                  <p className="text-[11px] text-muted-foreground">
+                    Owner phone
+                  </p>
+                  <p className="font-semibold">
+                    {property.landlord.phone}
+                  </p>
+                </div>
+              )}
+
               {/* RESPONSE INFO */}
 
               <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
@@ -1819,8 +1652,14 @@ function PropertyPage() {
           variant="outline"
           className="flex-1 rounded-xl"
         >
-          <Link to="/messages">
-            Contact
+          <Link
+            to="/messages"
+            search={{
+              propertyId: String(property.id),
+              landlordId: property.landlordId ?? "",
+            }}
+          >
+            Message
           </Link>
         </Button>
 

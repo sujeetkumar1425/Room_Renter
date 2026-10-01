@@ -91,7 +91,7 @@ function DashboardPage() {
           </div>
 
           <Button asChild className="rounded-xl">
-            <Link to="/search">
+            <Link to="/search" search={{ city: undefined, type: undefined, budget: undefined }}>
               <Search className="mr-2 h-4 w-4" />
               Find a Room
             </Link>
@@ -158,7 +158,7 @@ function DashboardPage() {
             </p>
 
             <Button asChild variant="outline" className="mt-5 rounded-xl">
-              <Link to="/search">
+              <Link to="/search" search={{ city: undefined, type: undefined, budget: undefined }}>
                 Explore Rooms
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
@@ -184,8 +184,8 @@ function DashboardPage() {
                 </p>
               </div>
 
-              <Button asChild variant="outline" className="rounded-xl">
-                <Link to="/profile">View Profile</Link>
+              <Button variant="outline" className="rounded-xl" disabled>
+                Profile settings coming soon
               </Button>
             </div>
           </div>

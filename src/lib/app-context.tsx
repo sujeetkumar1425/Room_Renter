@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import type { User } from "@supabase/supabase-js";
 
 import { supabase } from "./supabase";
 import { ACTIVE_CITY, isCityAvailable } from "./data";
@@ -8,6 +9,7 @@ type LocationStatus = "unknown" | "granted" | "denied" | "manual";
 export type UserRole = "renter" | "landlord" | null;
 
 type AppState = {
+  user: User | null;
   role: UserRole;
   setRole: (role: UserRole) => void;
 
@@ -34,6 +36,7 @@ const STATUS_KEY = "rr.status";
 const SAVED_KEY = "rr.saved";
 
 export function AppProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
   const [role, setRole] = useState<UserRole>(null);
   const [city, setCityState] = useState<string | null>(null);
   const [status, setStatus] = useState<LocationStatus>("unknown");
@@ -95,9 +98,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (!mounted) return;
 
       if (!session?.user) {
+        setUser(null);
         setRole(null);
         return;
       }
+
+      setUser(session.user);
 
       const { data: profile } = await supabase
         .from("profiles")
@@ -120,6 +126,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!mounted) return;
+
+      setUser(session?.user ?? null);
 
       if (!session?.user) {
         setRole(null);
@@ -269,6 +277,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<AppState>(
     () => ({
+      user,
       role,
       setRole,
 
@@ -294,7 +303,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       isSaved: (id: string) => saved.includes(String(id)),
     }),
-    [role, city, status, saved, ready, showLocationModal],
+    [user, role, city, status, saved, ready, showLocationModal],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

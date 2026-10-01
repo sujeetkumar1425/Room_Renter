@@ -12,6 +12,11 @@ type ReviewRow = {
   property_id: number;
   renter_id: string;
   reviewer_id: string;
+  reviewer_name: string;
+  rating: number;
+  review: string | null;
+  created_at: string;
+  updated_at: string;
 };
 
 export function PropertyReviews({

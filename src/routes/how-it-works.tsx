@@ -202,7 +202,7 @@ function HowItWorksPage() {
           </p>
 
           <Button asChild variant="secondary" className="mt-6 rounded-xl">
-            <Link to="/search">
+            <Link to="/search" search={{ city: undefined, type: undefined, budget: undefined }}>
               Find a Room
               <ArrowRight className="ml-2 h-4 w-4" />
             </Link>

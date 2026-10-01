@@ -10,7 +10,22 @@ export function PropertyCard({
   compact = false,
   showDeposit = false,
 }: {
-  property: Property;
+  property: Pick<
+    Property,
+    | "id"
+    | "title"
+    | "images"
+    | "verified"
+    | "rating"
+    | "reviews"
+    | "area"
+    | "city"
+    | "roomType"
+    | "amenities"
+    | "rent"
+    | "deposit"
+    | "distance"
+  >;
   compact?: boolean;
   showDeposit?: boolean;
 }) {

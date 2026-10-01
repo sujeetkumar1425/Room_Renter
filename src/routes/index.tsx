@@ -20,7 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 
 import { CITIES } from "@/lib/data";
-import { fetchListedProperties } from "@/lib/properties";
+import { fetchListedProperties, type Property } from "@/lib/properties";
 import { useApp } from "@/lib/app-context";
 import { cn } from "@/lib/utils";
 
@@ -96,7 +96,7 @@ function HomePage() {
      DATABASE PROPERTIES
   ------------------------------------------------------- */
 
-  const [properties, setProperties] = useState<import("@/lib/data").Property[]>([]);
+  const [properties, setProperties] = useState<Property[]>([]);
 
   const [propertiesLoading, setPropertiesLoading] = useState(true);
 
@@ -219,6 +219,8 @@ function HomePage() {
                 to="/search"
                 search={{
                   city: "Lucknow",
+                  type: undefined,
+                  budget: undefined,
                 }}
               >
                 View all rooms
@@ -322,6 +324,8 @@ function HomePage() {
                     to: "/search",
                     search: {
                       city: c.name,
+                      type: undefined,
+                      budget: undefined,
                     },
                   });
                 }}
@@ -395,6 +399,8 @@ function HomePage() {
               to="/search"
               search={{
                 city: "Lucknow",
+                type: undefined,
+                budget: undefined,
               }}
             >
               Find a Room

@@ -169,7 +169,7 @@ function SearchPage() {
       setLoadError(null);
 
       try {
-        const listed = await fetchListedProperties(activeCity);
+        const listed = await fetchListedProperties(activeCity ?? undefined);
 
         console.log("📍 Properties loaded:", listed);
 

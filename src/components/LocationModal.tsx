@@ -43,7 +43,7 @@ export function LocationModal() {
 
   return (
     <Dialog open={showLocationModal} onOpenChange={(o) => !o && closeLocationModal()}>
-      <DialogContent showCloseButton className="max-w-md rounded-3xl p-0 overflow-hidden">
+      <DialogContent className="max-w-md rounded-3xl p-0 overflow-hidden">
         <div className="px-6 pt-8 pb-6 text-center">
           <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-accent">
             <MapPin className="h-9 w-9 text-primary" strokeWidth={1.8} />

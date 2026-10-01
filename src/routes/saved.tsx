@@ -196,7 +196,7 @@ function SavedRoomsPage() {
             </p>
 
             <Button asChild className="mt-5 rounded-xl">
-              <Link to="/search">
+              <Link to="/search" search={{ city: undefined, type: undefined, budget: undefined }}>
                 <Search className="mr-2 h-4 w-4" />
                 Find a Room
               </Link>

@@ -130,7 +130,11 @@ function PropertyPage() {
             Home
           </Link>{" "}
           ·{" "}
-          <Link to="/search" search={{ city: "Lucknow" }} className="hover:text-primary">
+          <Link
+            to="/search"
+            search={{ city: "Lucknow", type: undefined, budget: undefined }}
+            className="hover:text-primary"
+          >
             Lucknow rooms
           </Link>{" "}
           · <span className="text-foreground">{property.area}</span>
@@ -358,14 +362,15 @@ function PropertyPage() {
               </p>
               <div className="mt-4 space-y-2">
                 <Button asChild size="lg" className="w-full rounded-xl">
-                  <Link to="/messages">
+                  <Link
+                    to="/messages"
+                    search={{ propertyId: String(property.id), landlordId: property.landlordId }}
+                  >
                     <Phone className="h-4 w-4" /> Contact Owner
                   </Link>
                 </Button>
-                <Button asChild size="lg" variant="outline" className="w-full rounded-xl">
-                  <Link to="/visits">
-                    <CalendarCheck className="h-4 w-4" /> Schedule Visit
-                  </Link>
+                <Button size="lg" variant="outline" className="w-full rounded-xl" disabled>
+                  <CalendarCheck className="h-4 w-4" /> Visits coming soon
                 </Button>
               </div>
               <p className="mt-3 text-center text-xs text-muted-foreground">
@@ -381,8 +386,8 @@ function PropertyPage() {
               <p className="mt-2 text-sm text-muted-foreground">
                 Create a rental agreement with your landlord before moving in.
               </p>
-              <Button asChild className="mt-4 w-full rounded-xl">
-                <Link to="/agreement">Create Agreement</Link>
+              <Button className="mt-4 w-full rounded-xl" disabled>
+                Agreement tools coming soon
               </Button>
             </div>
 
@@ -441,10 +446,15 @@ function PropertyPage() {
       {/* mobile sticky CTA */}
       <div className="fixed inset-x-0 bottom-16 z-30 flex gap-2 border-t border-border bg-background/95 p-3 backdrop-blur md:hidden">
         <Button asChild variant="outline" className="flex-1 rounded-xl">
-          <Link to="/messages">Contact</Link>
+          <Link
+            to="/messages"
+            search={{ propertyId: String(property.id), landlordId: property.landlordId }}
+          >
+            Contact
+          </Link>
         </Button>
-        <Button asChild className="flex-1 rounded-xl">
-          <Link to="/visits">Schedule Visit</Link>
+        <Button disabled className="flex-1 rounded-xl">
+          Visits coming soon
         </Button>
       </div>
     </Page>

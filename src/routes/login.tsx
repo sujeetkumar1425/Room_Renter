@@ -101,6 +101,8 @@ function LoginPage() {
         to: "/search",
         search: {
           city: "Lucknow",
+          type: undefined,
+          budget: undefined,
         },
       });
     }

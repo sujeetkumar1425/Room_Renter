@@ -4,7 +4,7 @@ import {
   Search,
   Heart,
   MessageSquare,
-  User,
+  User as UserIcon,
   MapPin,
   Menu,
   Bell,
@@ -13,7 +13,7 @@ import {
   LayoutDashboard,
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
-import type { User } from "@supabase/supabase-js";
+import type { User as SupabaseUser } from "@supabase/supabase-js";
 
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -96,7 +96,7 @@ function CityPill() {
 ========================================================= */
 
 export function Header() {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<SupabaseUser | null>(null);
 
   const [profile, setProfile] = useState<{
     full_name: string | null;
@@ -334,7 +334,7 @@ export function Header() {
                     {/* PROFILE ICON */}
 
                     <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                      <User className="h-4 w-4" />
+                      <UserIcon className="h-4 w-4" />
                     </span>
 
                     {/* USER NAME */}
@@ -465,6 +465,7 @@ export function Header() {
 
                     <Link
                       to="/messages"
+                      search={{ propertyId: undefined, landlordId: undefined }}
                       className="flex items-center gap-2 rounded-xl px-3 py-2.5 font-medium hover:bg-muted"
                     >
                       <MessageSquare className="h-4 w-4" />
@@ -557,7 +558,7 @@ const bottomNav = [
   {
     to: "/dashboard",
     label: "Profile",
-    icon: User,
+    icon: UserIcon,
   },
 ] as const;
 
@@ -618,7 +619,11 @@ export function Footer() {
 
           <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
             <li>
-              <Link to="/search" className="hover:text-primary">
+              <Link
+                to="/search"
+                search={{ city: undefined, type: undefined, budget: undefined }}
+                className="hover:text-primary"
+              >
                 Find a room
               </Link>
             </li>
@@ -626,18 +631,6 @@ export function Footer() {
             <li>
               <Link to="/saved" className="hover:text-primary">
                 Saved rooms
-              </Link>
-            </li>
-
-            <li>
-              <Link to="/visits" className="hover:text-primary">
-                Your visits
-              </Link>
-            </li>
-
-            <li>
-              <Link to="/agreement" className="hover:text-primary">
-                Rental agreement
               </Link>
             </li>
           </ul>

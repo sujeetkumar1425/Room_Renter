@@ -73,12 +73,11 @@ function MessagesPage() {
       .or(`renter_id.eq.${user.id},landlord_id.eq.${user.id}`)
       .order("updated_at", { ascending: false });
 
+    let rows = (conversationData ?? []) as Conversation[];
     if (error) {
       console.error("Conversations:", error);
-      data = [];
+      rows = [];
     }
-
-    let rows = (data ?? []) as Conversation[];
 
     // Starting a conversation from a property page.
     if (search.propertyId && search.landlordId && user.id !== search.landlordId) {

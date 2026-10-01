@@ -147,7 +147,7 @@ export function LandlordVerificationCard({
 
   const complete =
     Boolean(profile.full_name?.trim()) &&
-    /^[6-9]\d{9}$/.test((profile.phone ?? "").replace(/\D/g, "")) &&
+    /^[6-9]\d{9}$/.test(String(profile.phone ?? "").replace(/\D/g, "")) &&
     (profile.permanent_address?.trim().length ?? 0) >= 10 &&
     /^\d{4}$/.test(profile.aadhaar_last4 ?? "");
 

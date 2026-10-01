@@ -17,7 +17,9 @@ type NotificationRow = {
 
 export const Route = createFileRoute("/notifications")({
   beforeLoad: async () => {
-    const { data: { session } } = await supabase.auth.getSession();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
     if (!session) throw redirect({ to: "/login" });
   },
   head: () => ({
@@ -34,7 +36,9 @@ function NotificationsPage() {
   const [loading, setLoading] = useState(true);
 
   const load = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) return;
 
     const { data, error } = await supabase
@@ -71,7 +75,9 @@ function NotificationsPage() {
   }, []);
 
   const markAllRead = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) return;
 
     await supabase
@@ -126,9 +132,7 @@ function NotificationsPage() {
               <button
                 key={item.id}
                 className={`w-full rounded-2xl border p-4 text-left transition-colors ${
-                  item.read_at
-                    ? "border-border bg-card"
-                    : "border-primary/20 bg-primary/5"
+                  item.read_at ? "border-border bg-card" : "border-primary/20 bg-primary/5"
                 }`}
                 onClick={async () => {
                   if (item.read_at) return;
@@ -151,9 +155,7 @@ function NotificationsPage() {
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="font-semibold">{item.title}</p>
-                    {item.body && (
-                      <p className="mt-1 text-sm text-muted-foreground">{item.body}</p>
-                    )}
+                    {item.body && <p className="mt-1 text-sm text-muted-foreground">{item.body}</p>}
                     <p className="mt-2 text-xs text-muted-foreground">
                       {new Date(item.created_at).toLocaleString()}
                     </p>

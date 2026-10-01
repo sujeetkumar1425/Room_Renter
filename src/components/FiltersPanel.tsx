@@ -1,6 +1,13 @@
 import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { MapPin, CalendarDays, Wallet, Home as HomeIcon, SlidersHorizontal, Crosshair } from "lucide-react";
+import {
+  MapPin,
+  CalendarDays,
+  Wallet,
+  Home as HomeIcon,
+  SlidersHorizontal,
+  Crosshair,
+} from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -68,7 +75,10 @@ export function FiltersPanel({
 
   const apply = () => {
     onOpenChange(false);
-    navigate({ to: "/search", search: { city: city ?? "Lucknow", type, budget: max ? `Under ₹${max}` : undefined } });
+    navigate({
+      to: "/search",
+      search: { city: city ?? "Lucknow", type, budget: max ? `Under ₹${max}` : undefined },
+    });
   };
 
   return (
@@ -86,7 +96,9 @@ export function FiltersPanel({
               onClick={openLocationModal}
               className="flex w-full items-center justify-between rounded-xl border border-border px-3.5 py-2.5 text-left text-sm transition-colors hover:bg-muted"
             >
-              <span className={cn(!city && "text-muted-foreground")}>{city ?? "Select your city"}</span>
+              <span className={cn(!city && "text-muted-foreground")}>
+                {city ?? "Select your city"}
+              </span>
               <Crosshair className="h-4 w-4 text-muted-foreground" />
             </button>
           </Section>

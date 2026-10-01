@@ -24,8 +24,7 @@ export const Route = createFileRoute("/signup")({
       },
       {
         property: "og:description",
-        content:
-          "Separate sign up for room seekers and property owners.",
+        content: "Separate sign up for room seekers and property owners.",
       },
     ],
   }),
@@ -47,40 +46,28 @@ function SignupPage() {
     try {
       setGoogleLoading(true);
 
-      const googleRole =
-        role === "owner" ? "landlord" : "renter";
+      const googleRole = role === "owner" ? "landlord" : "renter";
 
       // Tell the callback that this Google authentication
       // started from SIGNUP, not LOGIN.
-      localStorage.setItem(
-        "pending_google_role",
-        googleRole
-      );
+      localStorage.setItem("pending_google_role", googleRole);
 
-      localStorage.setItem(
-        "google_auth_intent",
-        "signup"
-      );
+      localStorage.setItem("google_auth_intent", "signup");
 
-      const { error } =
-        await supabase.auth.signInWithOAuth({
-          provider: "google",
-          options: {
-            redirectTo: `${window.location.origin}/login`,
-            queryParams: {
-              prompt: "select_account",
-            },
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/login`,
+          queryParams: {
+            prompt: "select_account",
           },
-        });
+        },
+      });
 
       if (error) {
-        localStorage.removeItem(
-          "pending_google_role"
-        );
+        localStorage.removeItem("pending_google_role");
 
-        localStorage.removeItem(
-          "google_auth_intent"
-        );
+        localStorage.removeItem("google_auth_intent");
 
         toast.error(error.message);
         setGoogleLoading(false);
@@ -88,17 +75,11 @@ function SignupPage() {
     } catch (error) {
       console.error(error);
 
-      localStorage.removeItem(
-        "pending_google_role"
-      );
+      localStorage.removeItem("pending_google_role");
 
-      localStorage.removeItem(
-        "google_auth_intent"
-      );
+      localStorage.removeItem("google_auth_intent");
 
-      toast.error(
-        "Unable to continue with Google."
-      );
+      toast.error("Unable to continue with Google.");
 
       setGoogleLoading(false);
     }
@@ -108,30 +89,24 @@ function SignupPage() {
     e.preventDefault();
 
     if (password.length < 8) {
-      toast.error(
-        "Password must be at least 8 characters"
-      );
+      toast.error("Password must be at least 8 characters");
       return;
     }
 
     try {
       setLoading(true);
 
-      const { data, error } =
-        await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: {
-              full_name: name,
-              phone,
-              role:
-                role === "owner"
-                  ? "landlord"
-                  : "renter",
-            },
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: name,
+            phone,
+            role: role === "owner" ? "landlord" : "renter",
           },
-        });
+        },
+      });
 
       if (error) {
         toast.error(error.message);
@@ -139,32 +114,20 @@ function SignupPage() {
       }
 
       if (!data.user) {
-        toast.error(
-          "Unable to create account"
-        );
+        toast.error("Unable to create account");
         return;
       }
 
-      toast.success(
-        "Account created successfully!"
-      );
+      toast.success("Account created successfully!");
 
       navigate({
-        to:
-          role === "owner"
-            ? "/list-property"
-            : "/search",
-        search:
-          role === "owner"
-            ? undefined
-            : { city: "Lucknow" },
+        to: role === "owner" ? "/list-property" : "/search",
+        search: role === "owner" ? undefined : { city: "Lucknow" },
       });
     } catch (error) {
       console.error(error);
 
-      toast.error(
-        "Something went wrong. Please try again."
-      );
+      toast.error("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -174,20 +137,14 @@ function SignupPage() {
     <Page footer={false}>
       <div className="container-page flex justify-center py-12 sm:py-16">
         <div className="card-surface w-full max-w-md p-6 sm:p-8">
-
-          <h1 className="text-2xl font-bold">
-            Create your account
-          </h1>
+          <h1 className="text-2xl font-bold">Create your account</h1>
 
           <p className="mt-1.5 text-sm text-muted-foreground">
             Room seekers and property owners get their own space.
           </p>
 
           <div className="mt-5">
-            <RoleSwitch
-              role={role}
-              onChange={setLocalRole}
-            />
+            <RoleSwitch role={role} onChange={setLocalRole} />
           </div>
 
           <Button
@@ -196,91 +153,65 @@ function SignupPage() {
             size="lg"
             className="mt-6 w-full rounded-xl"
             onClick={continueWithGoogle}
-            disabled={
-              googleLoading || loading
-            }
+            disabled={googleLoading || loading}
           >
-            <span className="flex h-5 w-5 items-center justify-center font-bold text-base">
-              G
-            </span>
+            <span className="flex h-5 w-5 items-center justify-center font-bold text-base">G</span>
 
-            {googleLoading
-              ? "Connecting to Google..."
-              : "Continue with Google"}
+            {googleLoading ? "Connecting to Google..." : "Continue with Google"}
           </Button>
 
           <div className="my-5 flex items-center gap-3">
             <div className="h-px flex-1 bg-border" />
 
-            <span className="text-xs text-muted-foreground">
-              OR
-            </span>
+            <span className="text-xs text-muted-foreground">OR</span>
 
             <div className="h-px flex-1 bg-border" />
           </div>
 
-          <form
-            onSubmit={submit}
-            className="mt-6 space-y-4"
-          >
-
+          <form onSubmit={submit} className="mt-6 space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="name">
-                Full name
-              </Label>
+              <Label htmlFor="name">Full name</Label>
 
               <Input
                 id="name"
                 required
                 value={name}
-                onChange={(e) =>
-                  setName(e.target.value)
-                }
+                onChange={(e) => setName(e.target.value)}
                 placeholder="Sujeet Kumar"
                 className="rounded-xl"
               />
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="email">
-                Email
-              </Label>
+              <Label htmlFor="email">Email</Label>
 
               <Input
                 id="email"
                 type="email"
                 required
                 value={email}
-                onChange={(e) =>
-                  setEmail(e.target.value)
-                }
+                onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
                 className="rounded-xl"
               />
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="ph">
-                Phone number
-              </Label>
+              <Label htmlFor="ph">Phone number</Label>
 
               <Input
                 id="ph"
                 type="tel"
                 required
                 value={phone}
-                onChange={(e) =>
-                  setPhone(e.target.value)
-                }
+                onChange={(e) => setPhone(e.target.value)}
                 placeholder="+91 98XXXXXX21"
                 className="rounded-xl"
               />
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="pw">
-                Password
-              </Label>
+              <Label htmlFor="pw">Password</Label>
 
               <Input
                 id="pw"
@@ -288,9 +219,7 @@ function SignupPage() {
                 required
                 minLength={8}
                 value={password}
-                onChange={(e) =>
-                  setPassword(e.target.value)
-                }
+                onChange={(e) => setPassword(e.target.value)}
                 placeholder="Minimum 8 characters"
                 className="rounded-xl"
               />
@@ -300,9 +229,7 @@ function SignupPage() {
               type="submit"
               size="lg"
               className="w-full rounded-xl"
-              disabled={
-                loading || googleLoading
-              }
+              disabled={loading || googleLoading}
             >
               <ShieldCheck className="h-4 w-4" />
 
@@ -312,20 +239,14 @@ function SignupPage() {
                   ? "Create owner account"
                   : "Create seeker account"}
             </Button>
-
           </form>
 
           <p className="mt-5 text-center text-sm text-muted-foreground">
             Already registered?{" "}
-
-            <Link
-              to="/login"
-              className="font-semibold text-primary"
-            >
+            <Link to="/login" className="font-semibold text-primary">
               Log in
             </Link>
           </p>
-
         </div>
       </div>
     </Page>

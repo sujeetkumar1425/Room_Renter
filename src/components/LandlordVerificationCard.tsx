@@ -34,7 +34,9 @@ export function LandlordVerificationCard({
     let mounted = true;
 
     const load = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) {
         if (mounted) setLoading(false);
         return;
@@ -49,10 +51,7 @@ export function LandlordVerificationCard({
       if (!mounted) return;
 
       setProfile({
-        full_name:
-          data?.full_name ??
-          user.user_metadata?.full_name ??
-          "",
+        full_name: data?.full_name ?? user.user_metadata?.full_name ?? "",
         phone: data?.phone ?? user.user_metadata?.phone ?? "",
         permanent_address: data?.permanent_address ?? "",
         aadhaar_last4: data?.aadhaar_last4 ?? "",
@@ -98,7 +97,9 @@ export function LandlordVerificationCard({
     setSaving(true);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) throw new Error("Please log in again.");
 
       const payload = {
@@ -170,8 +171,8 @@ export function LandlordVerificationCard({
             <h2 className="font-bold">Landlord identity details</h2>
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
-            These details are used for owner verification. Your full Aadhaar number
-            and permanent address are never shown publicly on the listing.
+            These details are used for owner verification. Your full Aadhaar number and permanent
+            address are never shown publicly on the listing.
           </p>
         </div>
 
@@ -215,9 +216,7 @@ export function LandlordVerificationCard({
           <Label>Aadhaar — last 4 digits</Label>
           <Input
             value={profile.aadhaar_last4 ?? ""}
-            onChange={(e) =>
-              update("aadhaar_last4", e.target.value.replace(/\D/g, "").slice(0, 4))
-            }
+            onChange={(e) => update("aadhaar_last4", e.target.value.replace(/\D/g, "").slice(0, 4))}
             placeholder="XXXX"
             inputMode="numeric"
             maxLength={4}

@@ -71,7 +71,7 @@ export type Property = {
   coords: { top: string; left: string };
 };
 
-const landlords: Landlord[] = [
+const landlords: [Landlord, Landlord, Landlord] = [
   {
     name: "Rajeev Srivastava",
     photo: "https://i.pravatar.cc/160?img=12",
@@ -104,7 +104,7 @@ const landlords: Landlord[] = [
   },
 ];
 
-const reviewPool: Review[][] = [
+const reviewPool: [Review[], Review[]] = [
   [
     {
       name: "Ankit Tiwari",
@@ -347,7 +347,15 @@ export function getProperty(id: string) {
 export const formatINR = (n: number) => "₹" + n.toLocaleString("en-IN");
 export const shortINR = (n: number) => "₹" + Math.round(n / 1000) + "K";
 
-export const ROOM_TYPES = ["Any type", "Single Room", "Shared Room", "PG", "Studio", "1 BHK", "2 BHK"];
+export const ROOM_TYPES = [
+  "Any type",
+  "Single Room",
+  "Shared Room",
+  "PG",
+  "Studio",
+  "1 BHK",
+  "2 BHK",
+];
 export const AMENITY_LIST = [
   "Wi-Fi",
   "AC",

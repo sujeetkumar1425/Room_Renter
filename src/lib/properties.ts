@@ -30,7 +30,6 @@ export type PropertyLandlord = {
 
 export type Property = {
   id: string;
-
   landlordId?: string;
 
   title: string;
@@ -44,40 +43,41 @@ export type Property = {
   locality: string;
   area: string;
 
-  roomType: string;
+  roomType: "Single Room" | "Shared Room" | "1 BHK" | "2 BHK" | "Studio" | "PG";
 
   bedrooms: number;
   bathrooms: number;
 
-  occupancy: string | number;
+  occupancy: string;
 
-  available: boolean;
+  available: string;
 
-  furnished: string | boolean;
+  furnished: "Fully Furnished" | "Semi Furnished" | "Unfurnished";
 
-  gender: string;
+  gender: "Any" | "Male" | "Female";
+
+  /* Legacy fields used by other pages */
+  bathroom: "Attached" | "Shared";
+  food: boolean;
+  parking: boolean;
 
   amenities: string[];
-
   images: string[];
 
   verified: boolean;
 
   rating: number;
-
   reviews: number;
 
-  /* ==========================================================
-     REAL MAP LOCATION
-  ========================================================== */
-
+  /* Real map coordinates */
   latitude: number | null;
-
   longitude: number | null;
 
-  /* ==========================================================
-     PROPERTY DETAIL PAGE DATA
-  ========================================================== */
+  /* Legacy map coordinates */
+  coords: {
+    top: string;
+    left: string;
+  };
 
   distance: string;
 
@@ -88,693 +88,376 @@ export type Property = {
   landlord: PropertyLandlord;
 };
 
-
 /* ============================================================
-   SAFE NUMBER HELPER
+   SAFE HELPERS
 ============================================================ */
 
-function toNumber(
-  value: unknown,
-  fallback = 0,
-): number {
-  const number =
-    Number(value);
+function toNumber(value: unknown, fallback = 0): number {
+  const number = Number(value);
 
-  return Number.isFinite(
-    number,
-  )
-    ? number
-    : fallback;
+  return Number.isFinite(number) ? number : fallback;
 }
 
-
-/* ============================================================
-   SAFE COORDINATE HELPER
-============================================================ */
-
-function toCoordinate(
-  value: unknown,
-): number | null {
-  if (
-    value === null ||
-    value === undefined ||
-    value === ""
-  ) {
+function toCoordinate(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") {
     return null;
   }
 
-  const number =
-    Number(value);
+  const number = Number(value);
 
-  if (
-    !Number.isFinite(
-      number,
-    )
-  ) {
+  if (!Number.isFinite(number)) {
     return null;
   }
 
   return number;
 }
 
-
-/* ============================================================
-   SAFE STRING HELPER
-============================================================ */
-
-function toStringValue(
-  value: unknown,
-  fallback = "",
-): string {
-  if (
-    value === null ||
-    value === undefined
-  ) {
+function toStringValue(value: unknown, fallback = ""): string {
+  if (value === null || value === undefined) {
     return fallback;
   }
 
   return String(value);
 }
 
+type JsonObject = Record<string, unknown>;
+
+function isJsonObject(value: unknown): value is JsonObject {
+  return typeof value === "object" && value !== null;
+}
 
 /* ============================================================
-   MAP SUPABASE ROW → PROPERTY OBJECT
+   ARRAY HELPERS
 ============================================================ */
 
-function mapProperty(
-  row: any,
-): Property {
-  /* ==========================================================
-     IMAGES
-  ========================================================== */
+function toStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
 
-  const images: string[] =
-    Array.isArray(
-      row?.images,
-    )
-      ? row.images.filter(
-          (
-            image: unknown,
-          ) =>
-            typeof image ===
-              "string" &&
-            image.trim()
-              .length > 0,
-        )
+  return value
+    .filter((item): item is string => typeof item === "string")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+/* ============================================================
+   MAP SUPABASE ROW → PROPERTY
+============================================================ */
+
+function mapProperty(row: JsonObject): Property {
+  /* ==========================================================
+      IMAGES
+   ========================================================== */
+
+  const images = toStringArray(row["images"]);
+
+  /* ==========================================================
+      AMENITIES
+   ========================================================== */
+
+  const amenities = toStringArray(row["amenities"]);
+
+  /* ==========================================================
+      COORDINATES
+   ========================================================== */
+
+  const latitude = toCoordinate(row["latitude"]);
+  const longitude = toCoordinate(row["longitude"]);
+
+  /* ==========================================================
+      LANDLORD
+   ========================================================== */
+
+  const landlordData: JsonObject = isJsonObject(row["landlord"]) ? row["landlord"] : {};
+
+  /* ==========================================================
+      NEARBY PLACES
+   ========================================================== */
+
+  const nearbySource = Array.isArray(row["nearby"]) ? row["nearby"] : [];
+
+  const nearby: NearbyPlace[] = nearbySource.filter(isJsonObject).map((item) => ({
+    name: toStringValue(item["name"], "Nearby place"),
+    distance: toStringValue(item["distance"], ""),
+  }));
+
+  /* ==========================================================
+      REVIEWS
+   ========================================================== */
+
+  const reviewSource = Array.isArray(row["review_list"])
+    ? row["review_list"]
+    : Array.isArray(row["reviewList"])
+      ? row["reviewList"]
       : [];
 
+  const reviewList: PropertyReview[] = reviewSource.filter(isJsonObject).map((review) => ({
+    name: toStringValue(review["name"], "Verified Renter"),
+    date: toStringValue(review["date"], ""),
+    rating: toNumber(review["rating"], 0),
+    text: toStringValue(review["text"], ""),
+    avatar: toStringValue(review["avatar"], ""),
+  }));
 
   /* ==========================================================
-     AMENITIES
-  ========================================================== */
+      ROOM / BATHROOM
+   ========================================================== */
 
-  const amenities: string[] =
-    Array.isArray(
-      row?.amenities,
-    )
-      ? row.amenities
-          .filter(
-            (
-              item: unknown,
-            ) =>
-              typeof item ===
-              "string",
-          )
-          .map(
-            (
-              item: string,
-            ) => item.trim(),
-          )
-          .filter(Boolean)
-      : [];
+  const bathroomValue = toStringValue(row["bathroom"] ?? row["bathrooms"], "Shared");
 
+  const bathroom: "Attached" | "Shared" = bathroomValue.toLowerCase().includes("attach")
+    ? "Attached"
+    : "Shared";
 
   /* ==========================================================
-     COORDINATES
-  ========================================================== */
+      FOOD / PARKING
+   ========================================================== */
 
-  const latitude =
-    toCoordinate(
-      row?.latitude,
-    );
+  const food =
+    typeof row["food"] === "boolean"
+      ? row["food"]
+      : amenities.some((item) => item.toLowerCase() === "food");
 
-  const longitude =
-    toCoordinate(
-      row?.longitude,
-    );
-
-
-  /* ==========================================================
-     LANDLORD DATA
-     
-     Your properties table may not contain an embedded
-     landlord object. We therefore safely provide defaults.
-  ========================================================== */
-
-  const landlordData =
-    row?.landlord &&
-    typeof row.landlord ===
-      "object"
-      ? row.landlord
-      : null;
-
+  const parking =
+    typeof row["parking"] === "boolean"
+      ? row["parking"]
+      : amenities.some((item) => item.toLowerCase() === "parking");
 
   /* ==========================================================
-     NEARBY PLACES
-  ========================================================== */
+      LEGACY MAP POSITION
+   ========================================================== */
 
-  const nearby: NearbyPlace[] =
-    Array.isArray(
-      row?.nearby,
-    )
-      ? row.nearby
-          .filter(
-            (item: any) =>
-              item &&
-              typeof item ===
-                "object",
-          )
-          .map(
-            (
-              item: any,
-            ) => ({
-              name:
-                toStringValue(
-                  item.name,
-                  "Nearby place",
-                ),
+  const safeLatitude = latitude === null ? 50 : Math.max(5, Math.min(90, 50 - latitude));
 
-              distance:
-                toStringValue(
-                  item.distance,
-                  "",
-                ),
-            }),
-          )
-      : [];
-
+  const safeLongitude = longitude === null ? 50 : Math.max(5, Math.min(90, 50 + longitude));
 
   /* ==========================================================
-     REVIEWS
-  ========================================================== */
-
-  const reviewSource =
-    Array.isArray(
-      row?.review_list,
-    )
-      ? row.review_list
-      : Array.isArray(
-          row?.reviewList,
-        )
-        ? row.reviewList
-        : [];
-
-  const reviewList: PropertyReview[] =
-    reviewSource.map(
-      (
-        review: any,
-      ) => ({
-        name:
-          toStringValue(
-            review?.name,
-            "Verified Renter",
-          ),
-
-        date:
-          toStringValue(
-            review?.date,
-            "",
-          ),
-
-        rating:
-          toNumber(
-            review?.rating,
-            0,
-          ),
-
-        text:
-          toStringValue(
-            review?.text,
-            "",
-          ),
-
-        avatar:
-          toStringValue(
-            review?.avatar,
-            "",
-          ),
-      }),
-    );
-
-
-  /* ==========================================================
-     RETURN NORMALIZED PROPERTY
-  ========================================================== */
+      RETURN PROPERTY
+   ========================================================== */
 
   return {
-    /* --------------------------------------------------------
-       ID
-    -------------------------------------------------------- */
+    /* ID */
 
-    id: toStringValue(
-      row?.id,
-      "",
-    ),
+    id: toStringValue(row["id"], ""),
 
+    /* LANDLORD ID */
 
-    /* --------------------------------------------------------
-       LANDLORD ID
-    -------------------------------------------------------- */
+    ...(typeof row["landlord_id"] === "string"
+      ? {
+          landlordId: row["landlord_id"],
+        }
+      : {}),
 
-    landlordId:
-      row?.landlord_id ??
-      undefined,
+    /* BASIC INFORMATION */
 
+    title: toStringValue(row["title"], "Room"),
 
-    /* --------------------------------------------------------
-       BASIC INFORMATION
-    -------------------------------------------------------- */
+    description: toStringValue(row["description"], "No description available."),
 
-    title:
-      toStringValue(
-        row?.title,
-        "Room",
-      ),
+    /* PRICE */
 
-    description:
-      toStringValue(
-        row?.description,
-        "No description available.",
-      ),
+    rent: toNumber(row["rent"], 0),
 
+    deposit: toNumber(row["deposit"], 0),
 
-    /* --------------------------------------------------------
-       PRICE
-    -------------------------------------------------------- */
+    /* LOCATION */
 
-    rent:
-      toNumber(
-        row?.rent,
-        0,
-      ),
+    city: toStringValue(row["city"], ""),
 
-    deposit:
-      toNumber(
-        row?.deposit,
-        0,
-      ),
+    address: toStringValue(row["address"], ""),
 
+    locality: toStringValue(row["locality"], ""),
 
-    /* --------------------------------------------------------
-       LOCATION
-    -------------------------------------------------------- */
+    area: toStringValue(row["locality"] ?? row["area"] ?? row["address"], ""),
 
-    city:
-      toStringValue(
-        row?.city,
-        "",
-      ),
+    /* ROOM INFORMATION */
 
-    address:
-      toStringValue(
-        row?.address,
-        "",
-      ),
+    roomType: toRoomType(row["room_type"] ?? row["roomType"]),
+    bedrooms: toNumber(row["bedrooms"], 1),
+    bathrooms: toNumber(row["bathrooms"], 1),
+    occupancy: toStringValue(row["occupancy"], "1"),
 
-    locality:
-      toStringValue(
-        row?.locality,
-        "",
-      ),
-
-    area:
-      toStringValue(
-        row?.locality ??
-          row?.area ??
-          row?.address,
-        "",
-      ),
-
-
-    /* --------------------------------------------------------
-       ROOM INFORMATION
-    -------------------------------------------------------- */
-
-    roomType:
-      toStringValue(
-        row?.room_type ??
-          row?.roomType,
-        "Single Room",
-      ),
-
-    bedrooms:
-      toNumber(
-        row?.bedrooms,
-        1,
-      ),
-
-    bathrooms:
-      toNumber(
-        row?.bathrooms,
-        1,
-      ),
-
-    occupancy:
-      row?.occupancy ??
-      row?.bedrooms ??
-      1,
-
-
-    /* --------------------------------------------------------
-       AVAILABILITY
-    -------------------------------------------------------- */
+    /* AVAILABILITY */
 
     available:
-      row?.available !== false,
+      typeof row["available"] === "string"
+        ? row["available"]
+        : row["available"] === true
+          ? "Available"
+          : "Not Available",
 
+    /* FURNISHING */
 
-    /* --------------------------------------------------------
-       FURNISHING
-    -------------------------------------------------------- */
+    furnished: toFurnished(row["furnished"]),
+    gender: toGender(row["gender"]),
+    /* LEGACY FIELDS */
 
-    furnished:
-      row?.furnished ??
-      "Unfurnished",
+    bathroom,
 
+    food,
 
-    /* --------------------------------------------------------
-       GENDER
-    -------------------------------------------------------- */
+    parking,
 
-    gender:
-      toStringValue(
-        row?.gender,
-        "Any",
-      ),
-
-
-    /* --------------------------------------------------------
-       AMENITIES
-    -------------------------------------------------------- */
+    /* AMENITIES */
 
     amenities,
 
-
-    /* --------------------------------------------------------
-       IMAGES
-    -------------------------------------------------------- */
+    /* IMAGES */
 
     images,
 
+    /* VERIFICATION */
 
-    /* --------------------------------------------------------
-       VERIFICATION
-    -------------------------------------------------------- */
+    verified: Boolean(row["verified"] ?? false),
 
-    verified:
-      Boolean(
-        row?.verified ??
-          false,
-      ),
+    /* RATINGS */
 
+    rating: toNumber(row["rating"] ?? row["average_rating"] ?? row["avg_rating"], 0),
 
-    /* --------------------------------------------------------
-       RATINGS
-    -------------------------------------------------------- */
+    reviews: toNumber(row["review_count"] ?? row["reviews"] ?? row["reviews_count"], 0),
 
-    rating:
-      toNumber(
-        row?.rating ??
-          row?.average_rating ??
-          row?.avg_rating,
-        0,
-      ),
-
-    reviews:
-      toNumber(
-        row?.review_count ??
-          row?.reviews ??
-          row?.reviews_count,
-        0,
-      ),
-
-
-    /* ========================================================
-       REAL OPENSTREETMAP / LEAFLET COORDINATES
-    ======================================================== */
+    /* REAL COORDINATES */
 
     latitude,
 
     longitude,
 
+    /* LEGACY COORDINATES */
 
-    /* ========================================================
-       PROPERTY DETAIL PAGE FIELDS
-    ======================================================== */
+    coords: {
+      top: `${safeLatitude}%`,
+      left: `${safeLongitude}%`,
+    },
 
-    distance:
-      toStringValue(
-        row?.distance,
-        "",
-      ),
+    /* DETAIL PAGE */
 
+    distance: toStringValue(row["distance"], ""),
     nearby,
 
     reviewList,
 
-
-    /* ========================================================
-       LANDLORD
-    ======================================================== */
+    /* LANDLORD */
 
     landlord: {
-      name:
-        toStringValue(
-          landlordData?.name,
-          "Property Owner",
-        ),
+      name: toStringValue(landlordData["name"], "Property Owner"),
 
-      photo:
-        toStringValue(
-          landlordData?.photo,
-          "",
-        ),
-
-      rating:
-        toNumber(
-          landlordData?.rating,
-          0,
-        ),
-
-      since:
-        toStringValue(
-          landlordData?.since,
-          "",
-        ),
-
-      responseRate:
-        toNumber(
-          landlordData?.responseRate,
-          0,
-        ),
-
-      responseTime:
-        toStringValue(
-          landlordData?.responseTime,
-          "Usually responds quickly",
-        ),
-
-      phone:
-        toStringValue(
-          row?.landlord_phone ??
-            landlordData?.phone,
-          "",
-        ),
-
-      identityVerified:
-        Boolean(
-          row?.landlord_identity_verified ??
-            landlordData?.identityVerified ??
-            false,
-        ),
+      photo: toStringValue(landlordData["photo"], ""),
+      rating: toNumber(landlordData["rating"], 0),
+      since: toStringValue(landlordData["since"], ""),
+      responseRate: toNumber(landlordData["responseRate"], 0),
+      responseTime: toStringValue(landlordData["responseTime"], "Usually responds quickly"),
+      phone: toStringValue(row["landlord_phone"] ?? landlordData["phone"], ""),
+      identityVerified: Boolean(
+        row["landlord_identity_verified"] ?? landlordData["identityVerified"] ?? false,
+      ),
     },
   };
 }
-
 
 /* ============================================================
    FETCH ALL LISTED PROPERTIES
 ============================================================ */
 
-export async function fetchListedProperties(
-  city?: string,
-): Promise<Property[]> {
-  let query =
-    supabase
-      .from("properties")
-      .select("*")
-      .eq(
-        "available",
-        true,
-      )
-      .order(
-        "id",
-        {
-          ascending: false,
-        },
-      );
+export async function fetchListedProperties(city?: string): Promise<Property[]> {
+  let query = supabase.from("properties").select("*").eq("available", true).order("id", {
+    ascending: false,
+  });
 
+  /* CITY FILTER */
 
-  /* ==========================================================
-     CITY FILTER
-  ========================================================== */
-
-  if (
-    city &&
-    city.trim()
-  ) {
-    query =
-      query.eq(
-        "city",
-        city.trim(),
-      );
+  if (city && city.trim()) {
+    query = query.eq("city", city.trim());
   }
 
+  /* EXECUTE QUERY */
 
-  /* ==========================================================
-     EXECUTE QUERY
-  ========================================================== */
+  const { data, error } = await query;
 
-  const {
-    data,
-    error,
-  } = await query;
-
-
-  /* ==========================================================
-     ERROR
-  ========================================================== */
+  /* ERROR */
 
   if (error) {
-    console.error(
-      "❌ fetchListedProperties error:",
-      error,
-    );
+    console.error("fetchListedProperties error:", error);
 
-    throw new Error(
-      error.message ||
-        "Unable to load listed properties.",
-    );
+    throw new Error(error.message || "Unable to load listed properties.");
   }
 
+  /* NORMALIZE */
 
-  /* ==========================================================
-     NORMALIZE RESULTS
-  ========================================================== */
-
-  const properties =
-    (data ?? []).map(
-      (
-        row,
-      ) =>
-        mapProperty(
-          row,
-        ),
-    );
-
-
-  console.log(
-    "✅ Listed properties:",
-    properties,
-  );
-
-
-  return properties;
+  return (data ?? []).map((row) => mapProperty(row as JsonObject));
 }
-
 
 /* ============================================================
    FETCH SINGLE PROPERTY
 ============================================================ */
 
-export async function fetchPropertyById(
-  id: string | number,
-): Promise<Property | null> {
-  /* ==========================================================
-     CONVERT ID
-  ========================================================== */
+export async function fetchPropertyById(id: string | number): Promise<Property | null> {
+  const numericId = Number(id);
 
-  const numericId =
-    Number(id);
+  /* VALIDATE ID */
 
-
-  /* ==========================================================
-     VALIDATE ID
-  ========================================================== */
-
-  if (
-    !Number.isFinite(
-      numericId,
-    )
-  ) {
-    console.error(
-      "❌ Invalid property ID:",
-      id,
-    );
+  if (!Number.isFinite(numericId)) {
+    console.error("Invalid property ID:", id);
 
     return null;
   }
 
+  /* FETCH */
 
-  /* ==========================================================
-     FETCH PROPERTY
-  ========================================================== */
+  const { data, error } = await supabase
+    .from("properties")
+    .select("*")
+    .eq("id", numericId)
+    .maybeSingle();
 
-  const {
-    data,
-    error,
-  } =
-    await supabase
-      .from("properties")
-      .select("*")
-      .eq(
-        "id",
-        numericId,
-      )
-      .maybeSingle();
-
-
-  /* ==========================================================
-     ERROR
-  ========================================================== */
+  /* ERROR */
 
   if (error) {
-    console.error(
-      "❌ fetchPropertyById error:",
-      error,
-    );
+    console.error("fetchPropertyById error:", error);
 
-    throw new Error(
-      error.message ||
-        "Unable to load property.",
-    );
+    throw new Error(error.message || "Unable to load property.");
   }
 
-
-  /* ==========================================================
-     PROPERTY NOT FOUND
-  ========================================================== */
+  /* NOT FOUND */
 
   if (!data) {
     return null;
   }
 
+  /* NORMALIZE */
 
-  /* ==========================================================
-     NORMALIZE PROPERTY
-  ========================================================== */
+  return mapProperty(data as JsonObject);
+}
 
-  return mapProperty(
-    data,
-  );
+function toRoomType(value: unknown): Property["roomType"] {
+  const roomType = toStringValue(value, "Single Room");
+
+  const validRoomTypes: Property["roomType"][] = [
+    "Single Room",
+    "Shared Room",
+    "1 BHK",
+    "2 BHK",
+    "Studio",
+    "PG",
+  ];
+
+  return validRoomTypes.includes(roomType as Property["roomType"])
+    ? (roomType as Property["roomType"])
+    : "Single Room";
+}
+
+function toFurnished(value: unknown): Property["furnished"] {
+  const furnished = toStringValue(value, "Unfurnished");
+
+  const validValues: Property["furnished"][] = ["Fully Furnished", "Semi Furnished", "Unfurnished"];
+
+  return validValues.includes(furnished as Property["furnished"])
+    ? (furnished as Property["furnished"])
+    : "Unfurnished";
+}
+
+function toGender(value: unknown): Property["gender"] {
+  const gender = toStringValue(value, "Any");
+
+  return gender === "Male" || gender === "Female" ? gender : "Any";
 }

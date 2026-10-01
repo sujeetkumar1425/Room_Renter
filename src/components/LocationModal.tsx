@@ -56,7 +56,12 @@ export function LocationModal() {
                 location.
               </p>
               <div className="mt-6 space-y-3">
-                <Button size="lg" className="w-full rounded-xl" onClick={detect} disabled={detecting}>
+                <Button
+                  size="lg"
+                  className="w-full rounded-xl"
+                  onClick={detect}
+                  disabled={detecting}
+                >
                   {detecting ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (

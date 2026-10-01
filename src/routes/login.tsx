@@ -1,11 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import {
-  ArrowRight,
-  Eye,
-  EyeOff,
-  ShieldCheck,
-} from "lucide-react";
+import { ArrowRight, Eye, EyeOff, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 
 import { Page } from "@/components/Layout";
@@ -23,8 +18,7 @@ export const Route = createFileRoute("/login")({
       },
       {
         name: "description",
-        content:
-          "Log in to Room Renter as a room seeker or property owner.",
+        content: "Log in to Room Renter as a room seeker or property owner.",
       },
       {
         property: "og:title",
@@ -32,8 +26,7 @@ export const Route = createFileRoute("/login")({
       },
       {
         property: "og:description",
-        content:
-          "Log in to your Room Renter account.",
+        content: "Log in to your Room Renter account.",
       },
     ],
   }),
@@ -158,12 +151,8 @@ function LoginPage() {
          * We explicitly overwrite that profile with the role
          * selected during signup.
          */
-        if (
-          intent === "signup" &&
-          (pendingRole === "landlord" || pendingRole === "renter")
-        ) {
-          const googleRole =
-            pendingRole === "landlord" ? "landlord" : "renter";
+        if (intent === "signup" && (pendingRole === "landlord" || pendingRole === "renter")) {
+          const googleRole = pendingRole === "landlord" ? "landlord" : "renter";
 
           const fullName =
             session.user.user_metadata?.full_name ||
@@ -171,28 +160,22 @@ function LoginPage() {
             session.user.email?.split("@")[0] ||
             "Room Renter";
 
-          const phone =
-            session.user.user_metadata?.phone || "";
+          const phone = session.user.user_metadata?.phone || "";
 
-          const { error: profileError } = await supabase
-            .from("profiles")
-            .upsert(
-              {
-                id: session.user.id,
-                role: googleRole,
-                full_name: fullName,
-                phone,
-              },
-              {
-                onConflict: "id",
-              },
-            );
+          const { error: profileError } = await supabase.from("profiles").upsert(
+            {
+              id: session.user.id,
+              role: googleRole,
+              full_name: fullName,
+              phone,
+            },
+            {
+              onConflict: "id",
+            },
+          );
 
           if (profileError) {
-            console.error(
-              "Google signup profile error:",
-              profileError,
-            );
+            console.error("Google signup profile error:", profileError);
 
             toast.error(profileError.message);
             return;
@@ -220,20 +203,14 @@ function LoginPage() {
          * NORMAL GOOGLE LOGIN
          * ---------------------------------------------------
          */
-        const {
-          data: existingProfile,
-          error: profileError,
-        } = await supabase
+        const { data: existingProfile, error: profileError } = await supabase
           .from("profiles")
           .select("role, full_name, phone")
           .eq("id", session.user.id)
           .maybeSingle();
 
         if (profileError) {
-          console.error(
-            "Profile fetch error:",
-            profileError,
-          );
+          console.error("Profile fetch error:", profileError);
 
           toast.error(profileError.message);
           return;
@@ -245,18 +222,10 @@ function LoginPage() {
         if (existingProfile) {
           const existingRole = existingProfile.role;
 
-          if (
-            existingRole !== "renter" &&
-            existingRole !== "landlord"
-          ) {
-            console.error(
-              "Invalid profile role:",
-              existingRole,
-            );
+          if (existingRole !== "renter" && existingRole !== "landlord") {
+            console.error("Invalid profile role:", existingRole);
 
-            toast.error(
-              "Your account has an invalid role. Please contact support.",
-            );
+            toast.error("Your account has an invalid role. Please contact support.");
 
             return;
           }
@@ -276,10 +245,7 @@ function LoginPage() {
          *
          * If no profile exists for some reason, create one.
          */
-        const fallbackRole =
-          pendingRole === "landlord"
-            ? "landlord"
-            : "renter";
+        const fallbackRole = pendingRole === "landlord" ? "landlord" : "renter";
 
         const fullName =
           session.user.user_metadata?.full_name ||
@@ -287,23 +253,17 @@ function LoginPage() {
           session.user.email?.split("@")[0] ||
           "Room Renter";
 
-        const phone =
-          session.user.user_metadata?.phone || "";
+        const phone = session.user.user_metadata?.phone || "";
 
-        const { error: insertError } = await supabase
-          .from("profiles")
-          .insert({
-            id: session.user.id,
-            role: fallbackRole,
-            full_name: fullName,
-            phone,
-          });
+        const { error: insertError } = await supabase.from("profiles").insert({
+          id: session.user.id,
+          role: fallbackRole,
+          full_name: fullName,
+          phone,
+        });
 
         if (insertError) {
-          console.error(
-            "Profile creation error:",
-            insertError,
-          );
+          console.error("Profile creation error:", insertError);
 
           toast.error(insertError.message);
           return;
@@ -314,14 +274,9 @@ function LoginPage() {
 
         redirectUser(fallbackRole);
       } catch (error) {
-        console.error(
-          "Google authentication error:",
-          error,
-        );
+        console.error("Google authentication error:", error);
 
-        toast.error(
-          "Something went wrong during Google authentication.",
-        );
+        toast.error("Something went wrong during Google authentication.");
       }
     };
 
@@ -337,9 +292,7 @@ function LoginPage() {
    * EMAIL / PASSWORD LOGIN
    * -------------------------------------------------------
    */
-  const handleLogin = async (
-    e: React.FormEvent<HTMLFormElement>,
-  ) => {
+  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     if (!email.trim()) {
@@ -355,11 +308,10 @@ function LoginPage() {
     try {
       setLoading(true);
 
-      const { data, error } =
-        await supabase.auth.signInWithPassword({
-          email: email.trim(),
-          password,
-        });
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
 
       if (error) {
         console.error("Login error:", error);
@@ -375,36 +327,25 @@ function LoginPage() {
       /*
        * Get actual role from profiles table.
        */
-      const {
-        data: profile,
-        error: profileError,
-      } = await supabase
+      const { data: profile, error: profileError } = await supabase
         .from("profiles")
         .select("role")
         .eq("id", data.user.id)
         .maybeSingle();
 
       if (profileError) {
-        console.error(
-          "Profile fetch error:",
-          profileError,
-        );
+        console.error("Profile fetch error:", profileError);
 
         toast.error(profileError.message);
         return;
       }
 
       if (!profile) {
-        toast.error(
-          "Profile not found. Please complete your signup.",
-        );
+        toast.error("Profile not found. Please complete your signup.");
         return;
       }
 
-      if (
-        profile.role !== "renter" &&
-        profile.role !== "landlord"
-      ) {
+      if (profile.role !== "renter" && profile.role !== "landlord") {
         toast.error("Invalid account role.");
         return;
       }
@@ -418,9 +359,7 @@ function LoginPage() {
     } catch (error) {
       console.error("Unexpected login error:", error);
 
-      toast.error(
-        "Something went wrong. Please try again.",
-      );
+      toast.error("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -440,47 +379,31 @@ function LoginPage() {
        * not SIGNUP.
        */
       localStorage.removeItem("pending_google_role");
-      localStorage.setItem(
-        "google_auth_intent",
-        "login",
-      );
+      localStorage.setItem("google_auth_intent", "login");
 
-      const { error } =
-        await supabase.auth.signInWithOAuth({
-          provider: "google",
-          options: {
-            redirectTo: `${window.location.origin}/login`,
-            queryParams: {
-              prompt: "select_account",
-            },
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/login`,
+          queryParams: {
+            prompt: "select_account",
           },
-        });
+        },
+      });
 
       if (error) {
-        console.error(
-          "Google login error:",
-          error,
-        );
+        console.error("Google login error:", error);
 
-        localStorage.removeItem(
-          "google_auth_intent",
-        );
+        localStorage.removeItem("google_auth_intent");
 
         toast.error(error.message);
       }
     } catch (error) {
-      console.error(
-        "Unexpected Google login error:",
-        error,
-      );
+      console.error("Unexpected Google login error:", error);
 
-      localStorage.removeItem(
-        "google_auth_intent",
-      );
+      localStorage.removeItem("google_auth_intent");
 
-      toast.error(
-        "Unable to continue with Google.",
-      );
+      toast.error("Unable to continue with Google.");
     } finally {
       setGoogleLoading(false);
     }
@@ -491,9 +414,7 @@ function LoginPage() {
       <div className="container-page flex justify-center py-12 sm:py-16">
         <div className="card-surface w-full max-w-md p-6 sm:p-8">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">
-              Welcome back
-            </h1>
+            <h1 className="text-2xl font-bold tracking-tight">Welcome back</h1>
 
             <p className="mt-1.5 text-sm text-muted-foreground">
               Log in to continue to Room Renter.
@@ -501,28 +422,18 @@ function LoginPage() {
           </div>
 
           <div className="mt-6">
-            <RoleSwitch
-              role={role}
-              onChange={setLocalRole}
-            />
+            <RoleSwitch role={role} onChange={setLocalRole} />
           </div>
 
-          <form
-            onSubmit={handleLogin}
-            className="mt-6 space-y-4"
-          >
+          <form onSubmit={handleLogin} className="mt-6 space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">
-                Email
-              </Label>
+              <Label htmlFor="email">Email</Label>
 
               <Input
                 id="email"
                 type="email"
                 value={email}
-                onChange={(e) =>
-                  setEmail(e.target.value)
-                }
+                onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
                 autoComplete="email"
                 className="rounded-xl"
@@ -531,37 +442,27 @@ function LoginPage() {
 
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="password">
-                  Password
-                </Label>
+                <Label htmlFor="password">Password</Label>
 
                 <button
                   type="button"
                   className="text-xs font-medium text-primary hover:underline"
                   onClick={async () => {
                     if (!email.trim()) {
-                      toast.error(
-                        "Enter your email first.",
-                      );
+                      toast.error("Enter your email first.");
                       return;
                     }
 
-                    const { error } =
-                      await supabase.auth.resetPasswordForEmail(
-                        email.trim(),
-                        {
-                          redirectTo: `${window.location.origin}/login`,
-                        },
-                      );
+                    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+                      redirectTo: `${window.location.origin}/login`,
+                    });
 
                     if (error) {
                       toast.error(error.message);
                       return;
                     }
 
-                    toast.success(
-                      "Password reset email sent.",
-                    );
+                    toast.success("Password reset email sent.");
                   }}
                 >
                   Forgot password?
@@ -571,15 +472,9 @@ function LoginPage() {
               <div className="relative">
                 <Input
                   id="password"
-                  type={
-                    showPassword
-                      ? "text"
-                      : "password"
-                  }
+                  type={showPassword ? "text" : "password"}
                   value={password}
-                  onChange={(e) =>
-                    setPassword(e.target.value)
-                  }
+                  onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password"
                   autoComplete="current-password"
                   className="rounded-xl pr-10"
@@ -587,21 +482,11 @@ function LoginPage() {
 
                 <button
                   type="button"
-                  onClick={() =>
-                    setShowPassword((value) => !value)
-                  }
+                  onClick={() => setShowPassword((value) => !value)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  aria-label={
-                    showPassword
-                      ? "Hide password"
-                      : "Show password"
-                  }
+                  aria-label={showPassword ? "Hide password" : "Show password"}
                 >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
             </div>
@@ -625,9 +510,7 @@ function LoginPage() {
           <div className="my-6 flex items-center gap-3">
             <div className="h-px flex-1 bg-border" />
 
-            <span className="text-xs text-muted-foreground">
-              OR
-            </span>
+            <span className="text-xs text-muted-foreground">OR</span>
 
             <div className="h-px flex-1 bg-border" />
           </div>
@@ -640,11 +523,7 @@ function LoginPage() {
             onClick={handleGoogleLogin}
             disabled={loading || googleLoading}
           >
-            <svg
-              className="h-4 w-4"
-              viewBox="0 0 24 24"
-              aria-hidden="true"
-            >
+            <svg className="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
               <path
                 fill="#4285F4"
                 d="M21.35 12.27c0-.79-.07-1.55-.2-2.27H12v4.3h5.22a4.46 4.46 0 0 1-1.94 2.92v2.43h3.14c1.84-1.69 2.93-4.18 2.93-7.38Z"
@@ -663,9 +542,7 @@ function LoginPage() {
               />
             </svg>
 
-            {googleLoading
-              ? "Connecting to Google..."
-              : "Continue with Google"}
+            {googleLoading ? "Connecting to Google..." : "Continue with Google"}
           </Button>
 
           <div className="mt-6 rounded-xl border border-border bg-muted/30 p-4">
@@ -675,14 +552,11 @@ function LoginPage() {
               </div>
 
               <div>
-                <p className="text-sm font-semibold">
-                  Secure authentication
-                </p>
+                <p className="text-sm font-semibold">Secure authentication</p>
 
                 <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                  Your account role is stored securely
-                  and determines which dashboard you
-                  can access.
+                  Your account role is stored securely and determines which dashboard you can
+                  access.
                 </p>
               </div>
             </div>
@@ -690,10 +564,7 @@ function LoginPage() {
 
           <p className="mt-6 text-center text-sm text-muted-foreground">
             Don't have an account?{" "}
-            <Link
-              to="/signup"
-              className="font-semibold text-primary hover:underline"
-            >
+            <Link to="/signup" className="font-semibold text-primary hover:underline">
               Create one
             </Link>
           </p>

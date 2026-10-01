@@ -1,10 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { Map as LeafletMap, Marker } from "leaflet";
 
 import "leaflet/dist/leaflet.css";
 
@@ -27,17 +23,11 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 
-import {
-  ROOM_TYPES,
-  formatINR,
-  shortINR,
-  isCityAvailable,
-} from "@/lib/data";
+import { ROOM_TYPES, formatINR, shortINR, isCityAvailable } from "@/lib/data";
 
-import { fetchListedProperties } from "@/lib/properties";
+import { fetchListedProperties, type Property } from "@/lib/properties";
 import { useApp } from "@/lib/app-context";
 import { cn } from "@/lib/utils";
-
 
 // ============================================================
 // ROUTE
@@ -45,20 +35,11 @@ import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/search")({
   validateSearch: (s: Record<string, unknown>) => ({
-    city:
-      typeof s.city === "string"
-        ? s.city
-        : undefined,
+    city: typeof s.city === "string" ? s.city : undefined,
 
-    type:
-      typeof s.type === "string"
-        ? s.type
-        : undefined,
+    type: typeof s.type === "string" ? s.type : undefined,
 
-    budget:
-      typeof s.budget === "string"
-        ? s.budget
-        : undefined,
+    budget: typeof s.budget === "string" ? s.budget : undefined,
   }),
 
   head: () => ({
@@ -73,13 +54,11 @@ export const Route = createFileRoute("/search")({
       },
       {
         property: "og:title",
-        content:
-          "Search rooms in Lucknow — Room Renter",
+        content: "Search rooms in Lucknow — Room Renter",
       },
       {
         property: "og:description",
-        content:
-          "Filter verified rooms in Lucknow by price, type and amenities.",
+        content: "Filter verified rooms in Lucknow by price, type and amenities.",
       },
     ],
   }),
@@ -87,25 +66,15 @@ export const Route = createFileRoute("/search")({
   component: SearchPage,
 });
 
-
 // ============================================================
 // CONSTANTS
 // ============================================================
 
-const amenityFilters = [
-  "Wi-Fi",
-  "AC",
-  "Parking",
-  "Food",
-  "Washing Machine",
-  "Power Backup",
-];
-
+const amenityFilters = ["Wi-Fi", "AC", "Parking", "Food", "Washing Machine", "Power Backup"];
 
 // Default Lucknow coordinates
 const DEFAULT_LATITUDE = 26.8467;
 const DEFAULT_LONGITUDE = 80.9462;
-
 
 // ============================================================
 // SEARCH PAGE
@@ -114,119 +83,79 @@ const DEFAULT_LONGITUDE = 80.9462;
 function SearchPage() {
   const search = Route.useSearch();
 
-  const {
-    city,
-    setCity,
-    openLocationModal,
-  } = useApp();
+  const { city, setCity, openLocationModal } = useApp();
 
   const activeCity = search.city ?? city;
 
   const available = isCityAvailable(activeCity);
 
-
   // ==========================================================
   // FILTER STATE
   // ==========================================================
 
-  const [maxRent, setMaxRent] =
-    useState(20000);
+  const [maxRent, setMaxRent] = useState(20000);
 
-  const [type, setType] =
-    useState(
-      search.type &&
-        search.type !== "Any budget"
-        ? search.type
-        : "Any type",
-    );
+  const [type, setType] = useState(
+    search.type && search.type !== "Any budget" ? search.type : "Any type",
+  );
 
-  const [furnished, setFurnished] =
-    useState(false);
+  const [furnished, setFurnished] = useState(false);
 
-  const [verifiedOnly, setVerifiedOnly] =
-    useState(false);
+  const [verifiedOnly, setVerifiedOnly] = useState(false);
 
-  const [attached, setAttached] =
-    useState(false);
+  const [attached, setAttached] = useState(false);
 
-  const [food, setFood] =
-    useState(false);
+  const [food, setFood] = useState(false);
 
-  const [parking, setParking] =
-    useState(false);
+  const [parking, setParking] = useState(false);
 
-  const [gender, setGender] =
-    useState("Any");
+  const [gender, setGender] = useState("Any");
 
-  const [amenities, setAmenities] =
-    useState<string[]>([]);
+  const [amenities, setAmenities] = useState<string[]>([]);
 
-  const [query, setQuery] =
-    useState("");
-
+  const [query, setQuery] = useState("");
 
   // ==========================================================
   // UI STATE
   // ==========================================================
 
-  const [mobileView, setMobileView] =
-    useState<"list" | "map">("list");
+  const [mobileView, setMobileView] = useState<"list" | "map">("list");
 
-  const [selected, setSelected] =
-    useState<string | null>(null);
+  const [selected, setSelected] = useState<string | null>(null);
 
-  const [showFilters, setShowFilters] =
-    useState(false);
-
+  const [showFilters, setShowFilters] = useState(false);
 
   // ==========================================================
   // PROPERTY STATE
   // ==========================================================
 
-  const [properties, setProperties] =
-    useState<any[]>([]);
+  const [properties, setProperties] = useState<Property[]>([]);
 
-  const [isLoading, setIsLoading] =
-    useState(true);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const [loadError, setLoadError] =
-    useState<string | null>(null);
-
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // ==========================================================
   // LEAFLET REFS
   // ==========================================================
 
-  const mapContainerRef =
-    useRef<HTMLDivElement | null>(null);
+  const mapContainerRef = useRef<HTMLDivElement | null>(null);
 
-  const leafletMapRef =
-    useRef<any>(null);
+  const leafletMapRef = useRef<LeafletMap | null>(null);
 
-  const leafletRef =
-    useRef<any>(null);
+  const leafletRef = useRef<typeof import("leaflet") | null>(null);
 
-  const markersRef =
-    useRef<any[]>([]);
-
+  const markersRef = useRef<Marker[]>([]);
 
   // ==========================================================
   // SYNC CITY
   // ==========================================================
 
   useEffect(() => {
-    if (
-      search.city &&
-      search.city !== city
-    ) {
+    if (search.city && search.city !== city) {
       setCity(search.city);
     }
-  }, [
-    search.city,
-    city,
-    setCity,
-  ]);
-
+  }, [search.city, city, setCity]);
 
   // ==========================================================
   // LOAD PROPERTIES
@@ -240,15 +169,9 @@ function SearchPage() {
       setLoadError(null);
 
       try {
-        const listed =
-          await fetchListedProperties(
-            activeCity,
-          );
+        const listed = await fetchListedProperties(activeCity);
 
-        console.log(
-          "📍 Properties loaded:",
-          listed,
-        );
+        console.log("📍 Properties loaded:", listed);
 
         if (!cancelled) {
           /*
@@ -262,17 +185,12 @@ function SearchPage() {
           setProperties(listed);
         }
       } catch (error) {
-        console.error(
-          "Failed to load listed properties:",
-          error,
-        );
+        console.error("Failed to load listed properties:", error);
 
         if (!cancelled) {
           setProperties([]);
 
-          setLoadError(
-            "We couldn't load the listed rooms right now.",
-          );
+          setLoadError("We couldn't load the listed rooms right now.");
         }
       } finally {
         if (!cancelled) {
@@ -288,167 +206,84 @@ function SearchPage() {
     };
   }, [activeCity]);
 
-
   // ==========================================================
   // FILTER RESULTS
   // ==========================================================
 
   const results = useMemo(() => {
     return properties.filter((p) => {
-      const propertyAmenities =
-        Array.isArray(p.amenities)
-          ? p.amenities
-          : [];
+      const propertyAmenities = Array.isArray(p.amenities) ? p.amenities : [];
 
-      const furnishedValue =
-        String(
-          p.furnished ?? "",
-        ).toLowerCase();
+      const furnishedValue = String(p.furnished ?? "").toLowerCase();
 
-      const genderValue =
-        String(
-          p.gender ?? "Any",
-        ).toLowerCase();
+      const genderValue = String(p.gender ?? "Any").toLowerCase();
 
-      const searchableText = [
-        p.title,
-        p.area,
-        p.locality,
-        p.address,
-        p.city,
-        p.description,
-      ]
+      const searchableText = [p.title, p.area, p.locality, p.address, p.city, p.description]
         .filter(Boolean)
         .join(" ")
         .toLowerCase();
-
 
       // Available only
       if (!p.available) {
         return false;
       }
 
-
       // Rent filter
-      if (
-        Number(p.rent) >
-        maxRent
-      ) {
+      if (Number(p.rent) > maxRent) {
         return false;
       }
-
 
       // Room type
-      if (
-        type !== "Any type" &&
-        p.roomType !== type
-      ) {
+      if (type !== "Any type" && p.roomType !== type) {
         return false;
       }
-
 
       // Furnished
-      if (
-        furnished &&
-        ![
-          "fully furnished",
-          "semi furnished",
-          "true",
-        ].includes(furnishedValue)
-      ) {
+      if (furnished && !["fully furnished", "semi furnished", "true"].includes(furnishedValue)) {
         return false;
       }
-
 
       // Verified
-      if (
-        verifiedOnly &&
-        !p.verified
-      ) {
+      if (verifiedOnly && !p.verified) {
         return false;
       }
-
 
       // Attached bathroom
       if (
         attached &&
-        !propertyAmenities.some(
-          (a: string) =>
-            a
-              .toLowerCase()
-              .includes(
-                "attached bathroom",
-              ),
-        )
+        !propertyAmenities.some((a: string) => a.toLowerCase().includes("attached bathroom"))
       ) {
         return false;
       }
-
 
       // Food
-      if (
-        food &&
-        !propertyAmenities.some(
-          (a: string) =>
-            a
-              .toLowerCase() ===
-            "food",
-        )
-      ) {
+      if (food && !propertyAmenities.some((a: string) => a.toLowerCase() === "food")) {
         return false;
       }
-
 
       // Parking
-      if (
-        parking &&
-        !propertyAmenities.some(
-          (a: string) =>
-            a
-              .toLowerCase() ===
-            "parking",
-        )
-      ) {
+      if (parking && !propertyAmenities.some((a: string) => a.toLowerCase() === "parking")) {
         return false;
       }
-
 
       // Gender
-      if (
-        gender !== "Any" &&
-        genderValue !== "any" &&
-        genderValue !==
-          gender.toLowerCase()
-      ) {
+      if (gender !== "Any" && genderValue !== "any" && genderValue !== gender.toLowerCase()) {
         return false;
       }
-
 
       // Amenities
       if (
         amenities.some(
-          (a) =>
-            !propertyAmenities.some(
-              (pa: string) =>
-                pa.toLowerCase() ===
-                a.toLowerCase(),
-            ),
+          (a) => !propertyAmenities.some((pa: string) => pa.toLowerCase() === a.toLowerCase()),
         )
       ) {
         return false;
       }
-
 
       // Search
-      if (
-        query &&
-        !searchableText.includes(
-          query.toLowerCase(),
-        )
-      ) {
+      if (query && !searchableText.includes(query.toLowerCase())) {
         return false;
       }
-
 
       return true;
     });
@@ -466,18 +301,15 @@ function SearchPage() {
     query,
   ]);
 
-
   // ==========================================================
   // MAP-VALID PROPERTIES
   // ==========================================================
 
   const mappedProperties = useMemo(() => {
     return results.filter((property) => {
-      const latitude =
-        Number(property.latitude);
+      const latitude = Number(property.latitude);
 
-      const longitude =
-        Number(property.longitude);
+      const longitude = Number(property.longitude);
 
       return (
         Number.isFinite(latitude) &&
@@ -490,39 +322,23 @@ function SearchPage() {
     });
   }, [results]);
 
-
   // ==========================================================
   // SELECTED PROPERTY
   // ==========================================================
 
-  const selectedProperty =
-    results.find(
-      (p) =>
-        String(p.id) ===
-        selected,
-    );
-
+  const selectedProperty = results.find((p) => String(p.id) === selected);
 
   // ==========================================================
   // TOGGLE AMENITY
   // ==========================================================
 
-  const toggleAmenity = (
-    amenity: string,
-  ) => {
+  const toggleAmenity = (amenity: string) => {
     setAmenities((previous) =>
       previous.includes(amenity)
-        ? previous.filter(
-            (item) =>
-              item !== amenity,
-          )
-        : [
-            ...previous,
-            amenity,
-          ],
+        ? previous.filter((item) => item !== amenity)
+        : [...previous, amenity],
     );
   };
-
 
   // ==========================================================
   // INITIALIZE LEAFLET MAP
@@ -533,9 +349,7 @@ function SearchPage() {
       return;
     }
 
-    if (
-      !mapContainerRef.current
-    ) {
+    if (!mapContainerRef.current) {
       return;
     }
 
@@ -543,87 +357,61 @@ function SearchPage() {
 
     async function initializeMap() {
       try {
-        const leaflet =
-          await import("leaflet");
+        const leaflet = await import("leaflet");
 
         if (cancelled) {
           return;
         }
 
-        leafletRef.current =
-          leaflet;
+        leafletRef.current = leaflet;
 
         /*
          * Don't initialize twice.
          */
-        if (
-          leafletMapRef.current
-        ) {
+        if (leafletMapRef.current) {
           return;
         }
 
-        const map =
-          leaflet.map(
-            mapContainerRef.current!,
-            {
-              center: [
-                DEFAULT_LATITUDE,
-                DEFAULT_LONGITUDE,
-              ],
-              zoom: 11,
-              zoomControl: true,
-            },
-          );
+        const map = leaflet.map(mapContainerRef.current!, {
+          center: [DEFAULT_LATITUDE, DEFAULT_LONGITUDE],
+          zoom: 11,
+          zoomControl: true,
+        });
 
-        leafletMapRef.current =
-          map;
-
+        leafletMapRef.current = map;
 
         /*
          * OpenStreetMap tiles
          */
         leaflet
-          .tileLayer(
-            "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-            {
-              maxZoom: 19,
-              attribution:
-                '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-            },
-          )
+          .tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            maxZoom: 19,
+            attribution:
+              '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+          })
           .addTo(map);
-
 
         /*
          * Fix map sizing after
          * rendering.
          */
         setTimeout(() => {
-          if (
-            leafletMapRef.current
-          ) {
+          if (leafletMapRef.current) {
             leafletMapRef.current.invalidateSize();
           }
         }, 100);
-
 
         /*
          * Also invalidate when the
          * browser finishes layout.
          */
         setTimeout(() => {
-          if (
-            leafletMapRef.current
-          ) {
+          if (leafletMapRef.current) {
             leafletMapRef.current.invalidateSize();
           }
         }, 500);
-
       } catch (error) {
-        console.error(
-          "Leaflet initialization failed:",
-          error,
-        );
+        console.error("Leaflet initialization failed:", error);
       }
     }
 
@@ -634,114 +422,67 @@ function SearchPage() {
     };
   }, [available]);
 
-
   // ==========================================================
   // UPDATE MAP MARKERS
   // ==========================================================
 
   useEffect(() => {
-    const map =
-      leafletMapRef.current;
+    const map = leafletMapRef.current;
 
-    const leaflet =
-      leafletRef.current;
+    const leaflet = leafletRef.current;
 
-    if (
-      !map ||
-      !leaflet
-    ) {
+    if (!map || !leaflet) {
       return;
     }
-
 
     // --------------------------------------------------------
     // Remove old markers
     // --------------------------------------------------------
 
-    markersRef.current.forEach(
-      (marker) => {
-        try {
-          map.removeLayer(
-            marker,
-          );
-        } catch {
-          // Ignore already removed marker
-        }
-      },
-    );
+    markersRef.current.forEach((marker) => {
+      try {
+        map.removeLayer(marker);
+      } catch {
+        // Ignore already removed marker
+      }
+    });
 
     markersRef.current = [];
-
 
     // --------------------------------------------------------
     // No mapped properties
     // --------------------------------------------------------
 
-    if (
-      mappedProperties.length === 0
-    ) {
-      map.setView(
-        [
-          DEFAULT_LATITUDE,
-          DEFAULT_LONGITUDE,
-        ],
-        11,
-      );
+    if (mappedProperties.length === 0) {
+      map.setView([DEFAULT_LATITUDE, DEFAULT_LONGITUDE], 11);
 
       return;
     }
-
 
     // --------------------------------------------------------
     // Create markers
     // --------------------------------------------------------
 
-    const bounds =
-      leaflet.latLngBounds([]);
+    const bounds = leaflet.latLngBounds([]);
 
+    mappedProperties.forEach((property) => {
+      const latitude = Number(property.latitude);
 
-    mappedProperties.forEach(
-      (property) => {
-        const latitude =
-          Number(
-            property.latitude,
-          );
+      const longitude = Number(property.longitude);
 
-        const longitude =
-          Number(
-            property.longitude,
-          );
+      bounds.extend([latitude, longitude]);
 
+      /*
+       * Price marker.
+       */
+      const markerIcon = leaflet.divIcon({
+        className: "room-renter-price-marker",
 
-        bounds.extend([
-          latitude,
-          longitude,
-        ]);
-
-
-        /*
-         * Price marker.
-         */
-        const markerIcon =
-          leaflet.divIcon({
-            className:
-              "room-renter-price-marker",
-
-            html: `
+        html: `
               <div
                 style="
-                  background: ${
-                    selected ===
-                    String(property.id)
-                      ? "#111827"
-                      : "#ffffff"
-                  };
-                  color: ${
-                    selected ===
-                    String(property.id)
-                      ? "#ffffff"
-                      : "#111827"
-                  };
+                  background: ${selected === String(property.id) ? "#111827" : "#ffffff"};
+                  color: ${selected === String(property.id) ? "#ffffff" : "#111827"};
                   border: 2px solid #009688;
                   border-radius: 999px;
                   padding: 7px 11px;
@@ -752,181 +493,92 @@ function SearchPage() {
                   cursor: pointer;
                 "
               >
-                ${shortINR(
-                  property.rent,
-                )}
+                ${shortINR(property.rent)}
               </div>
             `,
 
-            iconSize:
-              undefined,
+        iconSize: undefined,
 
-            iconAnchor: [
-              0,
-              0,
-            ],
-          });
+        iconAnchor: [0, 0],
+      });
 
+      const marker = leaflet
+        .marker([latitude, longitude], {
+          icon: markerIcon,
+        })
+        .addTo(map);
 
-        const marker =
-          leaflet
-            .marker(
-              [
-                latitude,
-                longitude,
-              ],
-              {
-                icon: markerIcon,
-              },
-            )
-            .addTo(map);
+      /*
+       * Marker click.
+       */
+      marker.on("click", () => {
+        setSelected(String(property.id));
 
+        map.flyTo([latitude, longitude], 15, {
+          duration: 0.8,
+        });
+      });
 
-        /*
-         * Marker click.
-         */
-        marker.on(
-          "click",
-          () => {
-            setSelected(
-              String(
-                property.id,
-              ),
-            );
-
-            map.flyTo(
-              [
-                latitude,
-                longitude,
-              ],
-              15,
-              {
-                duration: 0.8,
-              },
-            );
-          },
-        );
-
-
-        /*
-         * Tooltip.
-         */
-        marker.bindTooltip(
-          `
+      /*
+       * Tooltip.
+       */
+      marker.bindTooltip(
+        `
             <strong>
               ${property.title}
             </strong>
             <br />
-            ${formatINR(
-              property.rent,
-            )}/month
+            ${formatINR(property.rent)}/month
           `,
-          {
-            direction:
-              "top",
+        {
+          direction: "top",
 
-            offset: [
-              0,
-              -10,
-            ],
-          },
-        );
+          offset: [0, -10],
+        },
+      );
 
-
-        markersRef.current.push(
-          marker,
-        );
-      },
-    );
-
+      markersRef.current.push(marker);
+    });
 
     // --------------------------------------------------------
     // Fit map to markers
     // --------------------------------------------------------
 
-    if (
-      mappedProperties.length ===
-      1
-    ) {
-      const property =
-        mappedProperties[0];
+    if (mappedProperties.length === 1) {
+      const property = mappedProperties[0];
 
-      map.setView(
-        [
-          Number(
-            property.latitude,
-          ),
-          Number(
-            property.longitude,
-          ),
-        ],
-        15,
-      );
+      map.setView([Number(property.latitude), Number(property.longitude)], 15);
     } else {
-      map.fitBounds(
-        bounds,
-        {
-          padding: [
-            50,
-            50,
-          ],
-          maxZoom: 14,
-        },
-      );
+      map.fitBounds(bounds, {
+        padding: [50, 50],
+        maxZoom: 14,
+      });
     }
-
-  }, [
-    mappedProperties,
-    selected,
-  ]);
-
+  }, [mappedProperties, selected]);
 
   // ==========================================================
   // SELECTED PROPERTY → FLY TO
   // ==========================================================
 
   useEffect(() => {
-    const map =
-      leafletMapRef.current;
+    const map = leafletMapRef.current;
 
-    if (
-      !map ||
-      !selectedProperty
-    ) {
+    if (!map || !selectedProperty) {
       return;
     }
 
-    const latitude =
-      Number(
-        selectedProperty.latitude,
-      );
+    const latitude = Number(selectedProperty.latitude);
 
-    const longitude =
-      Number(
-        selectedProperty.longitude,
-      );
+    const longitude = Number(selectedProperty.longitude);
 
-    if (
-      !Number.isFinite(latitude) ||
-      !Number.isFinite(longitude)
-    ) {
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
       return;
     }
 
-    map.flyTo(
-      [
-        latitude,
-        longitude,
-      ],
-      15,
-      {
-        duration: 0.8,
-      },
-    );
-  }, [
-    selectedProperty,
-  ]);
-
+    map.flyTo([latitude, longitude], 15, {
+      duration: 0.8,
+    });
+  }, [selectedProperty]);
 
   // ==========================================================
   // FILTER PANEL
@@ -934,17 +586,12 @@ function SearchPage() {
 
   const Filters = (
     <div className="space-y-6">
-
       {/* MAX RENT */}
       <div>
         <div className="flex items-center justify-between">
-          <Label className="text-sm font-semibold">
-            Max rent
-          </Label>
+          <Label className="text-sm font-semibold">Max rent</Label>
 
-          <span className="text-sm font-semibold text-primary">
-            {formatINR(maxRent)}
-          </span>
+          <span className="text-sm font-semibold text-primary">{formatINR(maxRent)}</span>
         </div>
 
         <Slider
@@ -952,37 +599,21 @@ function SearchPage() {
           min={3000}
           max={20000}
           step={500}
-          value={[
-            maxRent,
-          ]}
-          onValueChange={(
-            value,
-          ) =>
-            setMaxRent(
-              value[0],
-            )
-          }
+          value={[maxRent]}
+          onValueChange={(value) => setMaxRent(value[0])}
         />
       </div>
 
-
       {/* ROOM TYPE */}
       <div>
-        <Label className="text-sm font-semibold">
-          Room type
-        </Label>
+        <Label className="text-sm font-semibold">Room type</Label>
 
         <div className="mt-2.5 flex flex-wrap gap-2">
           <button
-            onClick={() =>
-              setType(
-                "Any type",
-              )
-            }
+            onClick={() => setType("Any type")}
             className={cn(
               "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
-              type ===
-                "Any type"
+              type === "Any type"
                 ? "border-primary bg-primary text-primary-foreground"
                 : "border-border hover:bg-muted",
             )}
@@ -990,175 +621,109 @@ function SearchPage() {
             Any type
           </button>
 
-          {ROOM_TYPES.map(
-            (roomType) => (
-              <button
-                key={roomType}
-                onClick={() =>
-                  setType(
-                    roomType,
-                  )
-                }
-                className={cn(
-                  "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
-                  type ===
-                    roomType
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-border hover:bg-muted",
-                )}
-              >
-                {roomType}
-              </button>
-            ),
-          )}
+          {ROOM_TYPES.map((roomType) => (
+            <button
+              key={roomType}
+              onClick={() => setType(roomType)}
+              className={cn(
+                "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
+                type === roomType
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border hover:bg-muted",
+              )}
+            >
+              {roomType}
+            </button>
+          ))}
         </div>
       </div>
-
 
       {/* AMENITIES */}
       <div>
-        <Label className="text-sm font-semibold">
-          Amenities
-        </Label>
+        <Label className="text-sm font-semibold">Amenities</Label>
 
         <div className="mt-2.5 flex flex-wrap gap-2">
-          {amenityFilters.map(
-            (amenity) => (
-              <button
-                key={amenity}
-                onClick={() =>
-                  toggleAmenity(
-                    amenity,
-                  )
-                }
-                className={cn(
-                  "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
-                  amenities.includes(
-                    amenity,
-                  )
-                    ? "border-primary bg-accent text-accent-foreground"
-                    : "border-border hover:bg-muted",
-                )}
-              >
-                {amenity}
-              </button>
-            ),
-          )}
+          {amenityFilters.map((amenity) => (
+            <button
+              key={amenity}
+              onClick={() => toggleAmenity(amenity)}
+              className={cn(
+                "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
+                amenities.includes(amenity)
+                  ? "border-primary bg-accent text-accent-foreground"
+                  : "border-border hover:bg-muted",
+              )}
+            >
+              {amenity}
+            </button>
+          ))}
         </div>
       </div>
-
 
       {/* GENDER */}
       <div>
-        <Label className="text-sm font-semibold">
-          Gender preference
-        </Label>
+        <Label className="text-sm font-semibold">Gender preference</Label>
 
         <div className="mt-2.5 flex gap-2">
-          {[
-            "Any",
-            "Male",
-            "Female",
-          ].map(
-            (value) => (
-              <button
-                key={value}
-                onClick={() =>
-                  setGender(
-                    value,
-                  )
-                }
-                className={cn(
-                  "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
-                  gender ===
-                    value
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-border hover:bg-muted",
-                )}
-              >
-                {value}
-              </button>
-            ),
-          )}
+          {["Any", "Male", "Female"].map((value) => (
+            <button
+              key={value}
+              onClick={() => setGender(value)}
+              className={cn(
+                "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
+                gender === value
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border hover:bg-muted",
+              )}
+            >
+              {value}
+            </button>
+          ))}
         </div>
       </div>
 
-
       {/* SWITCHES */}
       <div className="space-y-3 border-t border-border pt-4">
-
         {[
           {
-            label:
-              "Fully furnished",
-            value:
-              furnished,
-            set:
-              setFurnished,
+            label: "Fully furnished",
+            value: furnished,
+            set: setFurnished,
           },
 
           {
-            label:
-              "Attached bathroom",
-            value:
-              attached,
-            set:
-              setAttached,
+            label: "Attached bathroom",
+            value: attached,
+            set: setAttached,
           },
 
           {
-            label:
-              "Food included",
-            value:
-              food,
-            set:
-              setFood,
+            label: "Food included",
+            value: food,
+            set: setFood,
           },
 
           {
-            label:
-              "Parking",
-            value:
-              parking,
-            set:
-              setParking,
+            label: "Parking",
+            value: parking,
+            set: setParking,
           },
 
           {
-            label:
-              "Verified only",
-            value:
-              verifiedOnly,
-            set:
-              setVerifiedOnly,
+            label: "Verified only",
+            value: verifiedOnly,
+            set: setVerifiedOnly,
           },
-        ].map(
-          (row) => (
-            <div
-              key={
-                row.label
-              }
-              className="flex items-center justify-between"
-            >
-              <Label className="text-sm font-normal">
-                {row.label}
-              </Label>
+        ].map((row) => (
+          <div key={row.label} className="flex items-center justify-between">
+            <Label className="text-sm font-normal">{row.label}</Label>
 
-              <Switch
-                checked={
-                  row.value
-                }
-                onCheckedChange={
-                  row.set
-                }
-              />
-            </div>
-          ),
-        )}
+            <Switch checked={row.value} onCheckedChange={row.set} />
+          </div>
+        ))}
       </div>
     </div>
   );
-
 
   // ==========================================================
   // MAP PANEL
@@ -1166,146 +731,90 @@ function SearchPage() {
 
   const MapPanel = (
     <div className="relative h-[min(68vh,620px)] min-h-[420px] w-full overflow-hidden rounded-2xl border border-border bg-muted lg:h-[calc(100vh-9rem)] lg:min-h-[520px]">
-
       {/* REAL LEAFLET MAP */}
-      <div
-        ref={
-          mapContainerRef
-        }
-        className="absolute inset-0 z-0"
-      />
-
+      <div ref={mapContainerRef} className="absolute inset-0 z-0" />
 
       {/* MAP HEADER */}
       <div className="pointer-events-none absolute left-4 top-4 z-[500]">
         <div className="rounded-full bg-background/95 px-3 py-1.5 text-xs font-semibold shadow-md backdrop-blur">
-          {activeCity ??
-            "Selected city"}{" "}
-          ·{" "}
-          {results.length}{" "}
-          rooms
+          {activeCity ?? "Selected city"} · {results.length} rooms
         </div>
       </div>
 
-
       {/* NO COORDINATES MESSAGE */}
-      {!isLoading &&
-        results.length >
-          0 &&
-        mappedProperties.length ===
-          0 && (
-          <div className="pointer-events-none absolute inset-0 z-[450] flex items-center justify-center">
-            <div className="pointer-events-auto mx-4 max-w-sm rounded-2xl bg-background/95 p-6 text-center shadow-xl backdrop-blur">
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-accent">
-                <MapPin className="h-6 w-6 text-primary" />
-              </div>
-
-              <h3 className="mt-3 font-semibold">
-                Property locations are not available yet
-              </h3>
-
-              <p className="mt-1.5 text-sm text-muted-foreground">
-                New listings with a selected map location will appear here.
-              </p>
+      {!isLoading && results.length > 0 && mappedProperties.length === 0 && (
+        <div className="pointer-events-none absolute inset-0 z-[450] flex items-center justify-center">
+          <div className="pointer-events-auto mx-4 max-w-sm rounded-2xl bg-background/95 p-6 text-center shadow-xl backdrop-blur">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-accent">
+              <MapPin className="h-6 w-6 text-primary" />
             </div>
-          </div>
-        )}
 
+            <h3 className="mt-3 font-semibold">Property locations are not available yet</h3>
+
+            <p className="mt-1.5 text-sm text-muted-foreground">
+              New listings with a selected map location will appear here.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* NO RESULTS */}
-      {!isLoading &&
-        results.length ===
-          0 && (
-          <div className="pointer-events-none absolute inset-0 z-[450] flex items-center justify-center">
-            <div className="rounded-2xl bg-background/95 px-6 py-5 text-center shadow-xl backdrop-blur">
-              <SearchIcon className="mx-auto h-7 w-7 text-muted-foreground" />
+      {!isLoading && results.length === 0 && (
+        <div className="pointer-events-none absolute inset-0 z-[450] flex items-center justify-center">
+          <div className="rounded-2xl bg-background/95 px-6 py-5 text-center shadow-xl backdrop-blur">
+            <SearchIcon className="mx-auto h-7 w-7 text-muted-foreground" />
 
-              <p className="mt-2 text-sm font-medium">
-                No rooms match these filters
-              </p>
-            </div>
+            <p className="mt-2 text-sm font-medium">No rooms match these filters</p>
           </div>
-        )}
-
+        </div>
+      )}
 
       {/* SELECTED PROPERTY CARD */}
       {selectedProperty && (
         <div className="absolute inset-x-4 bottom-4 z-[600] max-w-sm">
           <div className="relative">
-
             <button
-              onClick={() =>
-                setSelected(
-                  null,
-                )
-              }
+              onClick={() => setSelected(null)}
               className="absolute -right-1 -top-3 z-20 flex h-7 w-7 items-center justify-center rounded-full bg-background shadow-md"
               aria-label="Close preview"
             >
               <X className="h-4 w-4" />
             </button>
 
-            <PropertyCard
-              property={
-                selectedProperty
-              }
-              compact
-            />
-
+            <PropertyCard property={selectedProperty} compact />
           </div>
         </div>
       )}
     </div>
   );
 
-
   // ==========================================================
   // RESET FILTERS
   // ==========================================================
 
-  const resetFilters =
-    () => {
-      setMaxRent(
-        20000,
-      );
+  const resetFilters = () => {
+    setMaxRent(20000);
 
-      setType(
-        "Any type",
-      );
+    setType("Any type");
 
-      setAmenities([]);
+    setAmenities([]);
 
-      setFurnished(
-        false,
-      );
+    setFurnished(false);
 
-      setVerifiedOnly(
-        false,
-      );
+    setVerifiedOnly(false);
 
-      setAttached(
-        false,
-      );
+    setAttached(false);
 
-      setFood(
-        false,
-      );
+    setFood(false);
 
-      setParking(
-        false,
-      );
+    setParking(false);
 
-      setGender(
-        "Any",
-      );
+    setGender("Any");
 
-      setQuery("");
+    setQuery("");
 
-      setSelected(
-        null,
-      );
-    };
-
+    setSelected(null);
+  };
 
   // ==========================================================
   // RENDER
@@ -1313,330 +822,171 @@ function SearchPage() {
 
   return (
     <Page footer={false}>
-
       {/* =====================================================
           SEARCH BAR
       ====================================================== */}
 
       <div className="border-b border-border bg-surface">
         <div className="container-page py-4">
-
           <div className="flex flex-wrap items-center gap-2">
-
             {/* CITY */}
             <button
-              onClick={
-                openLocationModal
-              }
+              onClick={openLocationModal}
               className="flex items-center gap-2 rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm font-medium"
             >
               <MapPin className="h-4 w-4 text-primary" />
 
-              {activeCity ??
-                "Select city"}
+              {activeCity ?? "Select city"}
             </button>
-
 
             {/* SEARCH */}
             <div className="relative min-w-[200px] flex-1">
-
               <SearchIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
 
               <Input
-                value={
-                  query
-                }
-                onChange={(
-                  event,
-                ) =>
-                  setQuery(
-                    event.target
-                      .value,
-                  )
-                }
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
                 placeholder="Search area, e.g. Gomti Nagar"
                 className="h-11 rounded-xl pl-9"
               />
-
             </div>
-
 
             {/* MOBILE FILTER BUTTON */}
             <Button
               variant="outline"
               className="rounded-xl lg:hidden"
-              onClick={() =>
-                setShowFilters(
-                  (value) =>
-                    !value,
-                )
-              }
+              onClick={() => setShowFilters((value) => !value)}
             >
               <SlidersHorizontal className="h-4 w-4" />
-
               Filters
             </Button>
 
-
             {/* VERIFIED */}
             <div className="ml-auto hidden items-center gap-1.5 text-sm text-muted-foreground lg:flex">
-
               <Star className="h-4 w-4 fill-warning text-warning" />
-
               Only verified owners
-
             </div>
-
           </div>
 
-
           {/* MOBILE FILTERS */}
-          {showFilters && (
-            <div className="card-surface mt-3 p-4 lg:hidden">
-              {Filters}
-            </div>
-          )}
-
+          {showFilters && <div className="card-surface mt-3 p-4 lg:hidden">{Filters}</div>}
         </div>
       </div>
-
 
       {/* =====================================================
           CITY NOT AVAILABLE
       ====================================================== */}
 
       {!available ? (
-
         <div className="container-page py-14">
-          <ComingSoon
-            city={
-              activeCity
-            }
-          />
+          <ComingSoon city={activeCity} />
         </div>
-
       ) : (
-
         /* ===================================================
            MAIN CONTENT
         ==================================================== */
 
         <div className="container-page grid min-w-0 gap-6 py-6 lg:grid-cols-[240px_minmax(0,1fr)_minmax(360px,460px)]">
-
-
           {/* =================================================
               DESKTOP FILTERS
           ================================================== */}
 
           <aside className="hidden lg:block">
-
-            <div className="card-surface sticky top-20 p-5">
-              {Filters}
-            </div>
-
+            <div className="card-surface sticky top-20 p-5">{Filters}</div>
           </aside>
-
 
           {/* =================================================
               PROPERTY LIST
           ================================================== */}
 
-          <section
-            className={cn(
-              mobileView ===
-                "map" &&
-                "hidden lg:block",
-            )}
-          >
-
+          <section className={cn(mobileView === "map" && "hidden lg:block")}>
             <div className="flex items-baseline justify-between">
-
               <h1 className="text-xl font-bold">
-                {results.length}{" "}
-                rooms in{" "}
-                {activeCity ??
-                  "your city"}
+                {results.length} rooms in {activeCity ?? "your city"}
               </h1>
 
-              <span className="text-sm text-muted-foreground">
-                Sorted by relevance
-              </span>
-
+              <span className="text-sm text-muted-foreground">Sorted by relevance</span>
             </div>
-
 
             {/* ERROR */}
             {loadError ? (
-
               <div className="card-surface mt-6 px-6 py-14 text-center">
+                <h2 className="text-lg font-semibold">Unable to load rooms</h2>
 
-                <h2 className="text-lg font-semibold">
-                  Unable to load rooms
-                </h2>
-
-                <p className="mt-1.5 text-sm text-muted-foreground">
-                  {loadError}
-                </p>
-
+                <p className="mt-1.5 text-sm text-muted-foreground">{loadError}</p>
               </div>
-
-
             ) : isLoading ? (
-
               /* LOADING */
               <div className="card-surface mt-6 px-6 py-14 text-center">
-
                 <div className="mx-auto h-10 w-10 animate-spin rounded-full border-2 border-muted border-t-primary" />
 
                 <p className="mt-4 text-sm text-muted-foreground">
                   Loading currently listed rooms...
                 </p>
-
               </div>
-
-
-            ) : results.length ===
-              0 ? (
-
+            ) : results.length === 0 ? (
               /* NO RESULTS */
               <div className="card-surface mt-6 px-6 py-14 text-center">
-
                 <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-muted">
-
                   <SearchIcon className="h-7 w-7 text-muted-foreground" />
-
                 </div>
 
-                <h2 className="mt-4 text-lg font-semibold">
-                  No rooms match these filters
-                </h2>
+                <h2 className="mt-4 text-lg font-semibold">No rooms match these filters</h2>
 
                 <p className="mt-1.5 text-sm text-muted-foreground">
                   Try increasing your budget or removing a few amenities.
                 </p>
 
-                <Button
-                  className="mt-5 rounded-xl"
-                  onClick={
-                    resetFilters
-                  }
-                >
+                <Button className="mt-5 rounded-xl" onClick={resetFilters}>
                   Reset filters
                 </Button>
-
               </div>
-
-
             ) : (
-
               /* PROPERTY CARDS */
               <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
-
-                {results.map(
-                  (property) => (
-                    <div
-                      key={
-                        property.id
-                      }
-                      onClick={() =>
-                        setSelected(
-                          String(
-                            property.id,
-                          ),
-                        )
-                      }
-                    >
-                      <PropertyCard
-                        property={
-                          property
-                        }
-                        showDeposit
-                      />
-                    </div>
-                  ),
-                )}
-
+                {results.map((property) => (
+                  <div key={property.id} onClick={() => setSelected(String(property.id))}>
+                    <PropertyCard property={property} showDeposit />
+                  </div>
+                ))}
               </div>
             )}
-
           </section>
-
 
           {/* =================================================
               REAL MAP
           ================================================== */}
 
-          <aside
-            className={cn(
-              "lg:block",
-              mobileView ===
-                "list" &&
-                "hidden",
-            )}
-          >
-
-            <div className="lg:sticky lg:top-20">
-
-              {MapPanel}
-
-            </div>
-
+          <aside className={cn("lg:block", mobileView === "list" && "hidden")}>
+            <div className="lg:sticky lg:top-20">{MapPanel}</div>
           </aside>
-
         </div>
       )}
-
 
       {/* =====================================================
           MOBILE MAP/LIST BUTTON
       ====================================================== */}
 
-      {available &&
-        !isLoading && (
-          <button
-            onClick={() =>
-              setMobileView(
-                (value) =>
-                  value ===
-                  "list"
-                    ? "map"
-                    : "list",
-              )
-            }
-            className="fixed bottom-20 left-1/2 z-[700] flex -translate-x-1/2 items-center gap-2 rounded-full bg-foreground px-5 py-3 text-sm font-semibold text-background shadow-[var(--shadow-float)] lg:hidden"
-          >
+      {available && !isLoading && (
+        <button
+          onClick={() => setMobileView((value) => (value === "list" ? "map" : "list"))}
+          className="fixed bottom-20 left-1/2 z-[700] flex -translate-x-1/2 items-center gap-2 rounded-full bg-foreground px-5 py-3 text-sm font-semibold text-background shadow-[var(--shadow-float)] lg:hidden"
+        >
+          {mobileView === "list" ? <MapIcon className="h-4 w-4" /> : <List className="h-4 w-4" />}
 
-            {mobileView ===
-            "list" ? (
-              <MapIcon className="h-4 w-4" />
-            ) : (
-              <List className="h-4 w-4" />
-            )}
-
-            {mobileView ===
-            "list"
-              ? "Map"
-              : "List"}
-
-          </button>
-        )}
-
+          {mobileView === "list" ? "Map" : "List"}
+        </button>
+      )}
 
       {/* =====================================================
           MOBILE FOOTER
       ====================================================== */}
 
       <div className="container-page pb-10 text-center text-sm text-muted-foreground lg:hidden">
-
-        <Link
-          to="/"
-          className="text-primary hover:underline"
-        >
+        <Link to="/" className="text-primary hover:underline">
           Back to home
         </Link>
-
       </div>
-
     </Page>
   );
 }

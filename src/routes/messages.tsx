@@ -30,7 +30,9 @@ export const Route = createFileRoute("/messages")({
     landlordId: typeof s.landlordId === "string" ? s.landlordId : undefined,
   }),
   beforeLoad: async () => {
-    const { data: { session } } = await supabase.auth.getSession();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
     if (!session) throw redirect({ to: "/login" });
   },
   head: () => ({
@@ -58,12 +60,14 @@ function MessagesPage() {
   );
 
   const loadConversations = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) return;
 
     setUserId(user.id);
 
-    let { data, error } = await supabase
+    const { data: conversationData, error } = await supabase
       .from("conversations")
       .select("id, property_id, renter_id, landlord_id, created_at, updated_at")
       .or(`renter_id.eq.${user.id},landlord_id.eq.${user.id}`)
@@ -169,9 +173,7 @@ function MessagesPage() {
         (payload) => {
           const message = payload.new as MessageRow;
           setMessages((current) =>
-            current.some((item) => item.id === message.id)
-              ? current
-              : [...current, message],
+            current.some((item) => item.id === message.id) ? current : [...current, message],
           );
         },
       )
@@ -203,9 +205,7 @@ function MessagesPage() {
       alert(error.message);
     } else if (data) {
       setMessages((current) =>
-        current.some((item) => item.id === data.id)
-          ? current
-          : [...current, data as MessageRow],
+        current.some((item) => item.id === data.id) ? current : [...current, data as MessageRow],
       );
       setText("");
       setConversations((current) =>
@@ -227,9 +227,7 @@ function MessagesPage() {
       <div className="container-page py-6 sm:py-10">
         <div className="mb-5">
           <h1 className="text-3xl font-bold tracking-tight">Messages</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Chat directly with property owners.
-          </p>
+          <p className="mt-1 text-sm text-muted-foreground">Chat directly with property owners.</p>
         </div>
 
         {loading ? (
@@ -239,14 +237,8 @@ function MessagesPage() {
           </div>
         ) : (
           <div className="grid min-h-[620px] overflow-hidden rounded-2xl border border-border bg-card md:grid-cols-[280px_1fr]">
-            <aside
-              className={`border-r border-border ${
-                selectedId ? "hidden md:block" : "block"
-              }`}
-            >
-              <div className="border-b border-border p-4 font-semibold">
-                Conversations
-              </div>
+            <aside className={`border-r border-border ${selectedId ? "hidden md:block" : "block"}`}>
+              <div className="border-b border-border p-4 font-semibold">Conversations</div>
 
               {conversations.length === 0 ? (
                 <div className="p-6 text-center text-sm text-muted-foreground">
@@ -260,9 +252,7 @@ function MessagesPage() {
                       key={conversation.id}
                       onClick={() => setSelectedId(conversation.id)}
                       className={`w-full p-4 text-left transition-colors ${
-                        selectedId === conversation.id
-                          ? "bg-primary/5"
-                          : "hover:bg-muted/50"
+                        selectedId === conversation.id ? "bg-primary/5" : "hover:bg-muted/50"
                       }`}
                     >
                       <div className="flex items-center gap-3">
@@ -271,9 +261,7 @@ function MessagesPage() {
                         </span>
                         <div className="min-w-0">
                           <p className="truncate text-sm font-semibold">
-                            {conversation.renter_id === userId
-                              ? "Property Owner"
-                              : "Room Seeker"}
+                            {conversation.renter_id === userId ? "Property Owner" : "Room Seeker"}
                           </p>
                           <p className="text-xs text-muted-foreground">
                             Property #{conversation.property_id ?? "—"}
@@ -287,9 +275,7 @@ function MessagesPage() {
             </aside>
 
             <section
-              className={`flex min-h-[620px] flex-col ${
-                !selectedId ? "hidden md:flex" : "flex"
-              }`}
+              className={`flex min-h-[620px] flex-col ${!selectedId ? "hidden md:flex" : "flex"}`}
             >
               {!selectedId ? (
                 <div className="flex flex-1 flex-col items-center justify-center p-8 text-center">
@@ -339,9 +325,7 @@ function MessagesPage() {
                         <div
                           key={message.id}
                           className={`flex ${
-                            message.sender_id === userId
-                              ? "justify-end"
-                              : "justify-start"
+                            message.sender_id === userId ? "justify-end" : "justify-start"
                           }`}
                         >
                           <div
@@ -351,9 +335,7 @@ function MessagesPage() {
                                 : "rounded-bl-md bg-muted"
                             }`}
                           >
-                            <p className="whitespace-pre-wrap break-words">
-                              {message.body}
-                            </p>
+                            <p className="whitespace-pre-wrap break-words">{message.body}</p>
                             <p className="mt-1 text-[10px] opacity-70">
                               {new Date(message.created_at).toLocaleTimeString([], {
                                 hour: "2-digit",
@@ -380,7 +362,11 @@ function MessagesPage() {
                         placeholder="Write a message..."
                         maxLength={5000}
                       />
-                      <Button type="submit" disabled={!text.trim() || sending} className="rounded-xl">
+                      <Button
+                        type="submit"
+                        disabled={!text.trim() || sending}
+                        className="rounded-xl"
+                      >
                         <Send className="h-4 w-4" />
                         <span className="sr-only">Send</span>
                       </Button>

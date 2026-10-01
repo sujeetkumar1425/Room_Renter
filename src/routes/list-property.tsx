@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
+import type { LeafletMouseEvent, Map as LeafletMap, Marker } from "leaflet";
 
 import {
   MapPin,
@@ -36,12 +37,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-import {
-  ACTIVE_CITY,
-  ROOM_TYPES,
-  AMENITY_LIST,
-  formatINR,
-} from "@/lib/data";
+import { ACTIVE_CITY, ROOM_TYPES, AMENITY_LIST, formatINR } from "@/lib/data";
 
 import { useApp } from "@/lib/app-context";
 import { cn } from "@/lib/utils";
@@ -114,10 +110,7 @@ function ListPropertyPage() {
     gender: "Any",
   });
 
-  const [picked, setPicked] = useState<string[]>([
-    "Wi-Fi",
-    "Attached Bathroom",
-  ]);
+  const [picked, setPicked] = useState<string[]>(["Wi-Fi", "Attached Bathroom"]);
 
   type SelectedPhoto = {
     file: File;
@@ -157,9 +150,7 @@ function ListPropertyPage() {
     }));
 
   const toggleAmenity = (a: string) =>
-    setPicked((p) =>
-      p.includes(a) ? p.filter((x) => x !== a) : [...p, a],
-    );
+    setPicked((p) => (p.includes(a) ? p.filter((x) => x !== a) : [...p, a]));
 
   /*
    * ============================================================
@@ -171,16 +162,12 @@ function ListPropertyPage() {
     fileInputRef.current?.click();
   };
 
-  const handlePhotoChange = (
-    e: React.ChangeEvent<HTMLInputElement>,
-  ) => {
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
 
     if (!files.length) return;
 
-    const imageFiles = files.filter((file) =>
-      file.type.startsWith("image/"),
-    );
+    const imageFiles = files.filter((file) => file.type.startsWith("image/"));
 
     if (imageFiles.length !== files.length) {
       toast.error("Only image files can be uploaded.");
@@ -280,11 +267,7 @@ function ListPropertyPage() {
     } catch (error) {
       console.error("Location search error:", error);
 
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Could not search for this location.",
-      );
+      toast.error(error instanceof Error ? error.message : "Could not search for this location.");
     } finally {
       setLocationLoading(false);
     }
@@ -325,12 +308,11 @@ function ListPropertyPage() {
       }
 
       // Load the real landlord details before creating the listing.
-      const { data: landlordProfile, error: landlordProfileError } =
-        await supabase
-          .from("profiles")
-          .select("full_name, phone, permanent_address, aadhaar_last4, aadhaar_verified")
-          .eq("id", user.id)
-          .maybeSingle();
+      const { data: landlordProfile, error: landlordProfileError } = await supabase
+        .from("profiles")
+        .select("full_name, phone, permanent_address, aadhaar_last4, aadhaar_verified")
+        .eq("id", user.id)
+        .maybeSingle();
 
       if (landlordProfileError) {
         toast.error("Could not load your landlord verification details.");
@@ -340,12 +322,8 @@ function ListPropertyPage() {
       // Supabase may return phone/aadhaar_last4 as BIGINT.
       // Convert them to strings before validation.
       const phone = String(landlordProfile?.phone ?? "").trim();
-      const permanentAddress = String(
-        landlordProfile?.permanent_address ?? "",
-      ).trim();
-      const aadhaarLast4 = String(
-        landlordProfile?.aadhaar_last4 ?? "",
-      ).trim();
+      const permanentAddress = String(landlordProfile?.permanent_address ?? "").trim();
+      const aadhaarLast4 = String(landlordProfile?.aadhaar_last4 ?? "").trim();
       const landlordName =
         landlordProfile?.full_name?.trim() ||
         user.user_metadata?.full_name ||
@@ -404,9 +382,7 @@ function ListPropertyPage() {
           landlord_id: user.id,
           landlord_name: landlordName,
           landlord_phone: phone.replace(/\D/g, ""),
-          landlord_identity_verified: Boolean(
-            landlordProfile?.aadhaar_verified,
-          ),
+          landlord_identity_verified: Boolean(landlordProfile?.aadhaar_verified),
           title: form.title.trim(),
           description: form.description.trim(),
           rent: Number(form.rent),
@@ -443,25 +419,16 @@ function ListPropertyPage() {
         .single();
 
       if (propertyError || !property) {
-        console.error(
-          "Property creation error:",
-          propertyError,
-        );
+        console.error("Property creation error:", propertyError);
 
-        toast.error(
-          propertyError?.message ||
-            "Could not create the property.",
-        );
+        toast.error(propertyError?.message || "Could not create the property.");
 
         return;
       }
 
       createdPropertyId = property.id;
 
-      console.log(
-        "2️⃣ Property created with database id:",
-        createdPropertyId,
-      );
+      console.log("2️⃣ Property created with database id:", createdPropertyId);
 
       const imageUrls: string[] = [];
 
@@ -474,16 +441,11 @@ function ListPropertyPage() {
       for (let i = 0; i < photos.length; i++) {
         const photo = photos[i];
 
-        const extension =
-          photo.file.name.split(".").pop()?.toLowerCase() ||
-          "jpg";
+        const extension = photo.file.name.split(".").pop()?.toLowerCase() || "jpg";
 
         const filePath = `${user.id}/${createdPropertyId}/${i + 1}.${extension}`;
 
-        console.log(
-          `3️⃣ Uploading image ${i + 1}/${photos.length}:`,
-          filePath,
-        );
+        console.log(`3️⃣ Uploading image ${i + 1}/${photos.length}:`, filePath);
 
         const { error: uploadError } = await supabase.storage
           .from("property-images")
@@ -494,22 +456,16 @@ function ListPropertyPage() {
           });
 
         if (uploadError) {
-          console.error(
-            "Image upload error:",
-            uploadError,
-          );
+          console.error("Image upload error:", uploadError);
 
-          throw new Error(
-            `Could not upload photo ${i + 1}: ${uploadError.message}`,
-          );
+          throw new Error(`Could not upload photo ${i + 1}: ${uploadError.message}`);
         }
 
         uploadedPaths.push(filePath);
 
-        const { data: publicData } =
-          supabase.storage
-            .from("property-images")
-            .getPublicUrl(filePath);
+        const { data: publicData } = supabase.storage
+          .from("property-images")
+          .getPublicUrl(filePath);
 
         imageUrls.push(publicData.publicUrl);
       }
@@ -522,55 +478,39 @@ function ListPropertyPage() {
        * ========================================================
        */
 
-      const { error: imageUpdateError } =
-        await supabase
-          .from("properties")
-          .update({
-            images: imageUrls,
-          })
-          .eq("id", createdPropertyId);
+      const { error: imageUpdateError } = await supabase
+        .from("properties")
+        .update({
+          images: imageUrls,
+        })
+        .eq("id", createdPropertyId);
 
       if (imageUpdateError) {
-        console.error(
-          "Image URL update error:",
-          imageUpdateError,
-        );
+        console.error("Image URL update error:", imageUpdateError);
 
         throw new Error(
           `Property was created, but images could not be saved: ${imageUpdateError.message}`,
         );
       }
 
-      photos.forEach((photo) =>
-        URL.revokeObjectURL(photo.preview),
-      );
+      photos.forEach((photo) => URL.revokeObjectURL(photo.preview));
 
       setPhotos([]);
 
-      toast.success(
-        "Property published successfully!",
-      );
+      toast.success("Property published successfully!");
 
       setStep(0);
 
-      console.log(
-        "🎉 PROPERTY PUBLISHED SUCCESSFULLY:",
-        createdPropertyId,
-      );
+      console.log("🎉 PROPERTY PUBLISHED SUCCESSFULLY:", createdPropertyId);
     } catch (error) {
-      console.error(
-        "Unexpected publish error:",
-        error,
-      );
+      console.error("Unexpected publish error:", error);
 
       /*
        * Clean up uploaded files.
        */
 
       if (uploadedPaths.length > 0) {
-        await supabase.storage
-          .from("property-images")
-          .remove(uploadedPaths);
+        await supabase.storage.from("property-images").remove(uploadedPaths);
       }
 
       /*
@@ -578,16 +518,11 @@ function ListPropertyPage() {
        */
 
       if (createdPropertyId !== null) {
-        await supabase
-          .from("properties")
-          .delete()
-          .eq("id", createdPropertyId);
+        await supabase.from("properties").delete().eq("id", createdPropertyId);
       }
 
       toast.error(
-        error instanceof Error
-          ? error.message
-          : "Something went wrong while publishing.",
+        error instanceof Error ? error.message : "Something went wrong while publishing.",
       );
     } finally {
       setIsPublishing(false);
@@ -603,32 +538,22 @@ function ListPropertyPage() {
   return (
     <Page>
       <div className="container-page py-8 sm:py-12">
-
         <LandlordVerificationCard />
 
         {/* HEADER */}
 
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-3xl font-bold">
-              List your property
-            </h1>
+            <h1 className="text-3xl font-bold">List your property</h1>
 
             <p className="mt-1.5 text-sm text-muted-foreground">
-              Owners can add rooms in {ACTIVE_CITY} —
-              other cities open soon.
+              Owners can add rooms in {ACTIVE_CITY} — other cities open soon.
             </p>
           </div>
 
           {role !== "landlord" && (
-            <Button
-              asChild
-              variant="outline"
-              className="rounded-xl"
-            >
-              <Link to="/login">
-                Log in as landlord
-              </Link>
+            <Button asChild variant="outline" className="rounded-xl">
+              <Link to="/login">Log in as landlord</Link>
             </Button>
           )}
         </div>
@@ -650,11 +575,7 @@ function ListPropertyPage() {
                     : "border-border text-muted-foreground",
               )}
             >
-              {i < step ? (
-                <Check className="h-4 w-4" />
-              ) : (
-                <s.icon className="h-4 w-4" />
-              )}
+              {i < step ? <Check className="h-4 w-4" /> : <s.icon className="h-4 w-4" />}
 
               {s.label}
             </button>
@@ -664,37 +585,25 @@ function ListPropertyPage() {
         {/* MAIN CARD */}
 
         <div className="card-surface mt-6 p-5 sm:p-7">
-
           {/* ==================================================
               STEP 0 — LOCATION
               ================================================== */}
 
           {step === 0 && (
             <div className="grid gap-4 sm:grid-cols-2">
-
-              <Field
-                label="Listing title"
-                className="sm:col-span-2"
-              >
+              <Field label="Listing title" className="sm:col-span-2">
                 <Input
                   value={form.title}
-                  onChange={(e) =>
-                    set("title", e.target.value)
-                  }
+                  onChange={(e) => set("title", e.target.value)}
                   placeholder="Fully Furnished Room in Gomti Nagar"
                   className="rounded-xl"
                 />
               </Field>
 
-              <Field
-                label="Full address"
-                className="sm:col-span-2"
-              >
+              <Field label="Full address" className="sm:col-span-2">
                 <Textarea
                   value={form.address}
-                  onChange={(e) =>
-                    set("address", e.target.value)
-                  }
+                  onChange={(e) => set("address", e.target.value)}
                   placeholder="House 21, Vipul Khand 2, Gomti Nagar"
                   className="rounded-xl"
                 />
@@ -703,35 +612,25 @@ function ListPropertyPage() {
               <Field label="Locality">
                 <Input
                   value={form.locality}
-                  onChange={(e) =>
-                    set("locality", e.target.value)
-                  }
+                  onChange={(e) => set("locality", e.target.value)}
                   placeholder="Gomti Nagar"
                   className="rounded-xl"
                 />
               </Field>
 
               <Field label="City">
-                <Select
-                  value={form.city}
-                  onValueChange={(v) =>
-                    set("city", v)
-                  }
-                >
+                <Select value={form.city} onValueChange={(v) => set("city", v)}>
                   <SelectTrigger className="rounded-xl">
                     <SelectValue />
                   </SelectTrigger>
 
                   <SelectContent>
-                    <SelectItem value={ACTIVE_CITY}>
-                      {ACTIVE_CITY} (available)
-                    </SelectItem>
+                    <SelectItem value={ACTIVE_CITY}>{ACTIVE_CITY} (available)</SelectItem>
                   </SelectContent>
                 </Select>
 
                 <p className="mt-1.5 text-xs text-muted-foreground">
-                  Listings are accepted only in currently
-                  supported cities.
+                  Listings are accepted only in currently supported cities.
                 </p>
               </Field>
 
@@ -742,9 +641,7 @@ function ListPropertyPage() {
                   <div className="flex gap-2">
                     <Input
                       value={locationSearch}
-                      onChange={(e) =>
-                        setLocationSearch(e.target.value)
-                      }
+                      onChange={(e) => setLocationSearch(e.target.value)}
                       onKeyDown={(e) => {
                         if (e.key === "Enter") {
                           e.preventDefault();
@@ -767,15 +664,13 @@ function ListPropertyPage() {
                         <Search className="h-4 w-4" />
                       )}
 
-                      <span className="hidden sm:inline">
-                        Search
-                      </span>
+                      <span className="hidden sm:inline">Search</span>
                     </Button>
                   </div>
 
                   <p className="mt-1.5 text-xs text-muted-foreground">
-                    Search for your property, then click the map
-                    or drag the marker to the exact location.
+                    Search for your property, then click the map or drag the marker to the exact
+                    location.
                   </p>
                 </Field>
               </div>
@@ -796,12 +691,10 @@ function ListPropertyPage() {
               {/* COORDINATES */}
 
               <div className="sm:col-span-2">
-                {latitude !== null &&
-                longitude !== null ? (
+                {latitude !== null && longitude !== null ? (
                   <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 text-sm">
                     <div className="flex items-center gap-2 font-medium text-primary">
                       <MapPin className="h-4 w-4" />
-
                       Location selected
                     </div>
 
@@ -815,13 +708,11 @@ function ListPropertyPage() {
                   <div className="rounded-xl border border-dashed border-border bg-muted/40 p-3 text-sm text-muted-foreground">
                     <div className="flex items-center gap-2">
                       <MapPin className="h-4 w-4 text-primary" />
-
                       No exact location selected yet.
                     </div>
 
                     <p className="mt-1 text-xs">
-                      Search for your property or click anywhere
-                      on the map.
+                      Search for your property or click anywhere on the map.
                     </p>
                   </div>
                 )}
@@ -835,29 +726,15 @@ function ListPropertyPage() {
 
           {step === 1 && (
             <div className="grid gap-4 sm:grid-cols-2">
-
               <Field label="Property type">
-                <Select
-                  value={form.propertyType}
-                  onValueChange={(v) =>
-                    set("propertyType", v)
-                  }
-                >
+                <Select value={form.propertyType} onValueChange={(v) => set("propertyType", v)}>
                   <SelectTrigger className="rounded-xl">
                     <SelectValue />
                   </SelectTrigger>
 
                   <SelectContent>
-                    {[
-                      "Independent House",
-                      "Apartment",
-                      "PG Hostel",
-                      "Builder Floor",
-                    ].map((t) => (
-                      <SelectItem
-                        key={t}
-                        value={t}
-                      >
+                    {["Independent House", "Apartment", "PG Hostel", "Builder Floor"].map((t) => (
+                      <SelectItem key={t} value={t}>
                         {t}
                       </SelectItem>
                     ))}
@@ -866,29 +743,17 @@ function ListPropertyPage() {
               </Field>
 
               <Field label="Room type">
-                <Select
-                  value={form.roomType}
-                  onValueChange={(v) =>
-                    set("roomType", v)
-                  }
-                >
+                <Select value={form.roomType} onValueChange={(v) => set("roomType", v)}>
                   <SelectTrigger className="rounded-xl">
                     <SelectValue />
                   </SelectTrigger>
 
                   <SelectContent>
-                    {ROOM_TYPES
-                      .filter(
-                        (t) => t !== "Any type",
-                      )
-                      .map((t) => (
-                        <SelectItem
-                          key={t}
-                          value={t}
-                        >
-                          {t}
-                        </SelectItem>
-                      ))}
+                    {ROOM_TYPES.filter((t) => t !== "Any type").map((t) => (
+                      <SelectItem key={t} value={t}>
+                        {t}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </Field>
@@ -897,40 +762,20 @@ function ListPropertyPage() {
                 <Input
                   inputMode="numeric"
                   value={form.occupancy}
-                  onChange={(e) =>
-                    set(
-                      "occupancy",
-                      e.target.value.replace(
-                        /\D/g,
-                        "",
-                      ),
-                    )
-                  }
+                  onChange={(e) => set("occupancy", e.target.value.replace(/\D/g, ""))}
                   className="rounded-xl"
                 />
               </Field>
 
               <Field label="Furnishing">
-                <Select
-                  value={form.furnished}
-                  onValueChange={(v) =>
-                    set("furnished", v)
-                  }
-                >
+                <Select value={form.furnished} onValueChange={(v) => set("furnished", v)}>
                   <SelectTrigger className="rounded-xl">
                     <SelectValue />
                   </SelectTrigger>
 
                   <SelectContent>
-                    {[
-                      "Fully Furnished",
-                      "Semi Furnished",
-                      "Unfurnished",
-                    ].map((t) => (
-                      <SelectItem
-                        key={t}
-                        value={t}
-                      >
+                    {["Fully Furnished", "Semi Furnished", "Unfurnished"].map((t) => (
+                      <SelectItem key={t} value={t}>
                         {t}
                       </SelectItem>
                     ))}
@@ -942,15 +787,7 @@ function ListPropertyPage() {
                 <Input
                   inputMode="numeric"
                   value={form.rent}
-                  onChange={(e) =>
-                    set(
-                      "rent",
-                      e.target.value.replace(
-                        /\D/g,
-                        "",
-                      ),
-                    )
-                  }
+                  onChange={(e) => set("rent", e.target.value.replace(/\D/g, ""))}
                   placeholder="10000"
                   className="rounded-xl"
                 />
@@ -960,15 +797,7 @@ function ListPropertyPage() {
                 <Input
                   inputMode="numeric"
                   value={form.deposit}
-                  onChange={(e) =>
-                    set(
-                      "deposit",
-                      e.target.value.replace(
-                        /\D/g,
-                        "",
-                      ),
-                    )
-                  }
+                  onChange={(e) => set("deposit", e.target.value.replace(/\D/g, ""))}
                   placeholder="20000"
                   className="rounded-xl"
                 />
@@ -978,38 +807,20 @@ function ListPropertyPage() {
                 <Input
                   type="date"
                   value={form.available}
-                  onChange={(e) =>
-                    set(
-                      "available",
-                      e.target.value,
-                    )
-                  }
+                  onChange={(e) => set("available", e.target.value)}
                   className="rounded-xl"
                 />
               </Field>
 
               <Field label="Gender preference">
-                <Select
-                  value={form.gender}
-                  onValueChange={(v) =>
-                    set("gender", v)
-                  }
-                >
+                <Select value={form.gender} onValueChange={(v) => set("gender", v)}>
                   <SelectTrigger className="rounded-xl">
                     <SelectValue />
                   </SelectTrigger>
 
                   <SelectContent>
-                    {[
-                      "Any",
-                      "Boys only",
-                      "Girls only",
-                      "Family",
-                    ].map((t) => (
-                      <SelectItem
-                        key={t}
-                        value={t}
-                      >
+                    {["Any", "Boys only", "Girls only", "Family"].map((t) => (
+                      <SelectItem key={t} value={t}>
                         {t}
                       </SelectItem>
                     ))}
@@ -1017,18 +828,10 @@ function ListPropertyPage() {
                 </Select>
               </Field>
 
-              <Field
-                label="Description"
-                className="sm:col-span-2"
-              >
+              <Field label="Description" className="sm:col-span-2">
                 <Textarea
                   value={form.description}
-                  onChange={(e) =>
-                    set(
-                      "description",
-                      e.target.value,
-                    )
-                  }
+                  onChange={(e) => set("description", e.target.value)}
                   placeholder="Bright room with balcony, 10 min from Lulu Mall…"
                   className="min-h-28 rounded-xl"
                 />
@@ -1058,12 +861,8 @@ function ListPropertyPage() {
                     className="flex cursor-pointer items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm"
                   >
                     <Checkbox
-                      checked={picked.includes(
-                        name,
-                      )}
-                      onCheckedChange={() =>
-                        toggleAmenity(name)
-                      }
+                      checked={picked.includes(name)}
+                      onCheckedChange={() => toggleAmenity(name)}
                     />
 
                     {name}
@@ -1094,24 +893,17 @@ function ListPropertyPage() {
                 className="flex w-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border bg-muted/40 py-10 text-sm text-muted-foreground transition-colors hover:bg-muted"
               >
                 <Upload className="h-5 w-5 text-primary" />
-
-                Upload room photos — first photo becomes
-                the cover
+                Upload room photos — first photo becomes the cover
               </button>
 
               {photos.length > 0 && (
                 <div className="mt-4 grid gap-3 sm:grid-cols-3">
                   {photos.map((photo, i) => (
-                    <div
-                      key={photo.preview}
-                      className="card-surface overflow-hidden p-3 text-sm"
-                    >
+                    <div key={photo.preview} className="card-surface overflow-hidden p-3 text-sm">
                       <div className="relative">
                         <img
                           src={photo.preview}
-                          alt={`Property photo ${
-                            i + 1
-                          }`}
+                          alt={`Property photo ${i + 1}`}
                           className="h-40 w-full rounded-xl object-cover"
                         />
 
@@ -1123,12 +915,8 @@ function ListPropertyPage() {
 
                         <button
                           type="button"
-                          onClick={() =>
-                            removePhoto(i)
-                          }
-                          aria-label={`Remove photo ${
-                            i + 1
-                          }`}
+                          onClick={() => removePhoto(i)}
+                          aria-label={`Remove photo ${i + 1}`}
                           className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-background/90 shadow"
                         >
                           <Trash2 className="h-4 w-4 text-destructive" />
@@ -1156,25 +944,16 @@ function ListPropertyPage() {
                 ["pets", "Pets allowed"],
                 ["smoking", "Smoking allowed"],
                 ["noise", "Quiet hours after 10 PM"],
-                [
-                  "subletting",
-                  "Subletting allowed",
-                ],
+                ["subletting", "Subletting allowed"],
               ].map(([key, label]) => (
                 <div
                   key={key}
                   className="flex items-center justify-between rounded-xl border border-border px-4 py-3"
                 >
-                  <Label className="font-medium">
-                    {label}
-                  </Label>
+                  <Label className="font-medium">{label}</Label>
 
                   <Switch
-                    checked={
-                      rules[
-                        key as keyof typeof rules
-                      ] as boolean
-                    }
+                    checked={rules[key as keyof typeof rules] as boolean}
                     onCheckedChange={(v) =>
                       setRules((r) => ({
                         ...r,
@@ -1209,95 +988,51 @@ function ListPropertyPage() {
             <div>
               <div className="flex items-center gap-2 text-sm font-semibold text-primary">
                 <Building2 className="h-4 w-4" />
-
                 Listing preview
               </div>
 
-              <h2 className="mt-2 text-2xl font-bold">
-                {form.title || "Untitled room"}
-              </h2>
+              <h2 className="mt-2 text-2xl font-bold">{form.title || "Untitled room"}</h2>
 
               <p className="text-sm text-muted-foreground">
-                {[form.locality, form.city]
-                  .filter(Boolean)
-                  .join(", ")}
+                {[form.locality, form.city].filter(Boolean).join(", ")}
               </p>
 
-              {latitude !== null &&
-                longitude !== null && (
-                  <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
-                    <MapPin className="h-3.5 w-3.5 text-primary" />
-
-                    Exact location selected
-                  </div>
-                )}
+              {latitude !== null && longitude !== null && (
+                <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+                  <MapPin className="h-3.5 w-3.5 text-primary" />
+                  Exact location selected
+                </div>
+              )}
 
               <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                <Stat
-                  label="Rent"
-                  value={
-                    form.rent
-                      ? `${formatINR(
-                          Number(form.rent),
-                        )}/mo`
-                      : "—"
-                  }
-                />
+                <Stat label="Rent" value={form.rent ? `${formatINR(Number(form.rent))}/mo` : "—"} />
 
                 <Stat
                   label="Deposit"
-                  value={
-                    form.deposit
-                      ? formatINR(
-                          Number(form.deposit),
-                        )
-                      : "—"
-                  }
+                  value={form.deposit ? formatINR(Number(form.deposit)) : "—"}
                 />
 
-                <Stat
-                  label="Available"
-                  value={
-                    form.available ||
-                    "Immediately"
-                  }
-                />
+                <Stat label="Available" value={form.available || "Immediately"} />
 
-                <Stat
-                  label="Room type"
-                  value={form.roomType}
-                />
+                <Stat label="Room type" value={form.roomType} />
 
-                <Stat
-                  label="Furnishing"
-                  value={form.furnished}
-                />
+                <Stat label="Furnishing" value={form.furnished} />
 
-                <Stat
-                  label="Gender"
-                  value={form.gender}
-                />
+                <Stat label="Gender" value={form.gender} />
               </div>
 
               <p className="mt-4 text-sm text-muted-foreground">
-                {form.description ||
-                  "No description added yet."}
+                {form.description || "No description added yet."}
               </p>
 
               <p className="mt-4 text-sm">
-                <span className="font-semibold">
-                  Amenities:{" "}
-                </span>
+                <span className="font-semibold">Amenities: </span>
 
-                {picked.join(" · ") ||
-                  "None selected"}
+                {picked.join(" · ") || "None selected"}
               </p>
 
               <p className="mt-1 text-sm">
-                <span className="font-semibold">
-                  Photos:{" "}
-                </span>
-
+                <span className="font-semibold">Photos: </span>
                 {photos.length} uploaded
               </p>
             </div>
@@ -1312,22 +1047,13 @@ function ListPropertyPage() {
               variant="outline"
               className="rounded-xl"
               disabled={step === 0}
-              onClick={() =>
-                setStep((s) =>
-                  Math.max(0, s - 1),
-                )
-              }
+              onClick={() => setStep((s) => Math.max(0, s - 1))}
             >
               Back
             </Button>
 
             {step < steps.length - 1 ? (
-              <Button
-                className="rounded-xl"
-                onClick={() =>
-                  setStep((s) => s + 1)
-                }
-              >
+              <Button className="rounded-xl" onClick={() => setStep((s) => s + 1)}>
                 Continue
               </Button>
             ) : (
@@ -1336,9 +1062,7 @@ function ListPropertyPage() {
                 className="rounded-xl"
                 disabled={isPublishing}
                 onClick={() => {
-                  console.log(
-                    "🔥 PUBLISH BUTTON CLICKED",
-                  );
+                  console.log("🔥 PUBLISH BUTTON CLICKED");
 
                   publish();
                 }}
@@ -1346,13 +1070,11 @@ function ListPropertyPage() {
                 {isPublishing ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
-
                     Publishing...
                   </>
                 ) : (
                   <>
                     <Check className="h-4 w-4" />
-
                     Publish Property
                   </>
                 )}
@@ -1387,19 +1109,15 @@ function PropertyLocationMap({
 }: {
   latitude: number | null;
   longitude: number | null;
-  onLocationChange: (
-    latitude: number,
-    longitude: number,
-  ) => void;
+  onLocationChange: (latitude: number, longitude: number) => void;
 }) {
-  const mapContainerRef =
-    useRef<HTMLDivElement | null>(null);
+  const mapContainerRef = useRef<HTMLDivElement | null>(null);
 
-  const mapRef = useRef<any>(null);
+  const mapRef = useRef<LeafletMap | null>(null);
 
-  const markerRef = useRef<any>(null);
+  const markerRef = useRef<Marker | null>(null);
 
-  const leafletRef = useRef<any>(null);
+  const leafletRef = useRef<typeof import("leaflet") | null>(null);
 
   const initializedRef = useRef(false);
 
@@ -1418,10 +1136,7 @@ function PropertyLocationMap({
     let cancelled = false;
 
     const initializeMap = async () => {
-      if (
-        !mapContainerRef.current ||
-        initializedRef.current
-      ) {
+      if (!mapContainerRef.current || initializedRef.current) {
         return;
       }
 
@@ -1433,13 +1148,11 @@ function PropertyLocationMap({
        * It will never be evaluated during SSR.
        */
 
-      const leafletModule =
-        await import("leaflet");
+      const leafletModule = await import("leaflet");
 
       if (cancelled) return;
 
-      const L =
-        leafletModule.default;
+      const L = leafletModule.default;
 
       leafletRef.current = L;
 
@@ -1449,27 +1162,17 @@ function PropertyLocationMap({
 
       initializedRef.current = true;
 
-      const initialLatitude =
-        latitude ?? DEFAULT_LATITUDE;
+      const initialLatitude = latitude ?? DEFAULT_LATITUDE;
 
-      const initialLongitude =
-        longitude ?? DEFAULT_LONGITUDE;
+      const initialLongitude = longitude ?? DEFAULT_LONGITUDE;
 
       /*
        * Create map
        */
 
-      const map = L.map(
-        mapContainerRef.current,
-      ).setView(
-        [
-          initialLatitude,
-          initialLongitude,
-        ],
-        latitude !== null &&
-        longitude !== null
-          ? 17
-          : 12,
+      const map = L.map(mapContainerRef.current).setView(
+        [initialLatitude, initialLongitude],
+        latitude !== null && longitude !== null ? 17 : 12,
       );
 
       mapRef.current = map;
@@ -1478,15 +1181,12 @@ function PropertyLocationMap({
        * OpenStreetMap tiles
        */
 
-      L.tileLayer(
-        "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-        {
-          attribution:
-            '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution:
+          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
 
-          maxZoom: 19,
-        },
-      ).addTo(map);
+        maxZoom: 19,
+      }).addTo(map);
 
       /*
        * Custom marker.
@@ -1495,12 +1195,10 @@ function PropertyLocationMap({
        * assets, so Vite does not have to process marker PNGs.
        */
 
-      const markerIcon =
-        L.divIcon({
-          className:
-            "room-renter-map-marker",
+      const markerIcon = L.divIcon({
+        className: "room-renter-map-marker",
 
-          html: `
+        html: `
             <div
               style="
                 width: 36px;
@@ -1526,114 +1224,67 @@ function PropertyLocationMap({
             </div>
           `,
 
-          iconSize: [
-            36,
-            36,
-          ],
+        iconSize: [36, 36],
 
-          iconAnchor: [
-            18,
-            36,
-          ],
+        iconAnchor: [18, 36],
 
-          popupAnchor: [
-            0,
-            -36,
-          ],
-        });
+        popupAnchor: [0, -36],
+      });
 
       /*
        * Add marker helper
        */
 
-      const createMarker = (
-        lat: number,
-        lng: number,
-      ) => {
+      const createMarker = (lat: number, lng: number) => {
         if (!mapRef.current) {
           return;
         }
 
         if (markerRef.current) {
-          markerRef.current.setLatLng([
-            lat,
-            lng,
-          ]);
+          markerRef.current.setLatLng([lat, lng]);
 
           return;
         }
 
-        const marker =
-          L.marker(
-            [
-              lat,
-              lng,
-            ],
-            {
-              icon: markerIcon,
-              draggable: true,
-            },
-          ).addTo(mapRef.current);
+        const marker = L.marker([lat, lng], {
+          icon: markerIcon,
+          draggable: true,
+        }).addTo(mapRef.current);
 
-        markerRef.current =
-          marker;
+        markerRef.current = marker;
 
         /*
          * Marker drag
          */
 
-        marker.on(
-          "dragend",
-          () => {
-            const position =
-              marker.getLatLng();
+        marker.on("dragend", () => {
+          const position = marker.getLatLng();
 
-            onLocationChange(
-              position.lat,
-              position.lng,
-            );
-          },
-        );
+          onLocationChange(position.lat, position.lng);
+        });
       };
 
       /*
        * Existing selected location
        */
 
-      if (
-        latitude !== null &&
-        longitude !== null
-      ) {
-        createMarker(
-          latitude,
-          longitude,
-        );
+      if (latitude !== null && longitude !== null) {
+        createMarker(latitude, longitude);
       }
 
       /*
        * Map click
        */
 
-      map.on(
-        "click",
-        (event: any) => {
-          const lat =
-            event.latlng.lat;
+      map.on("click", (event: LeafletMouseEvent) => {
+        const lat = event.latlng.lat;
 
-          const lng =
-            event.latlng.lng;
+        const lng = event.latlng.lng;
 
-          createMarker(
-            lat,
-            lng,
-          );
+        createMarker(lat, lng);
 
-          onLocationChange(
-            lat,
-            lng,
-          );
-        },
-      );
+        onLocationChange(lat, lng);
+      });
 
       /*
        * Fix map sizing after rendering.
@@ -1672,20 +1323,13 @@ function PropertyLocationMap({
    */
 
   useEffect(() => {
-    if (
-      !mapRef.current ||
-      !leafletRef.current ||
-      latitude === null ||
-      longitude === null
-    ) {
+    if (!mapRef.current || !leafletRef.current || latitude === null || longitude === null) {
       return;
     }
 
-    const map =
-      mapRef.current;
+    const map = mapRef.current;
 
-    const L =
-      leafletRef.current;
+    const L = leafletRef.current;
 
     /*
      * If marker already exists,
@@ -1693,21 +1337,16 @@ function PropertyLocationMap({
      */
 
     if (markerRef.current) {
-      markerRef.current.setLatLng([
-        latitude,
-        longitude,
-      ]);
+      markerRef.current.setLatLng([latitude, longitude]);
     } else {
       /*
        * Create marker if it doesn't exist.
        */
 
-      const markerIcon =
-        L.divIcon({
-          className:
-            "room-renter-map-marker",
+      const markerIcon = L.divIcon({
+        className: "room-renter-map-marker",
 
-          html: `
+        html: `
             <div
               style="
                 width: 36px;
@@ -1733,83 +1372,43 @@ function PropertyLocationMap({
             </div>
           `,
 
-          iconSize: [
-            36,
-            36,
-          ],
+        iconSize: [36, 36],
 
-          iconAnchor: [
-            18,
-            36,
-          ],
+        iconAnchor: [18, 36],
 
-          popupAnchor: [
-            0,
-            -36,
-          ],
-        });
+        popupAnchor: [0, -36],
+      });
 
-      const marker =
-        L.marker(
-          [
-            latitude,
-            longitude,
-          ],
-          {
-            icon: markerIcon,
-            draggable: true,
-          },
-        ).addTo(map);
+      const marker = L.marker([latitude, longitude], {
+        icon: markerIcon,
+        draggable: true,
+      }).addTo(map);
 
-      markerRef.current =
-        marker;
+      markerRef.current = marker;
 
-      marker.on(
-        "dragend",
-        () => {
-          const position =
-            marker.getLatLng();
+      marker.on("dragend", () => {
+        const position = marker.getLatLng();
 
-          onLocationChange(
-            position.lat,
-            position.lng,
-          );
-        },
-      );
+        onLocationChange(position.lat, position.lng);
+      });
     }
 
     /*
      * Center map on selected location.
      */
 
-    map.setView(
-      [
-        latitude,
-        longitude,
-      ],
-      17,
-      {
-        animate: true,
-      },
-    );
-  }, [
-    latitude,
-    longitude,
-    onLocationChange,
-  ]);
+    map.setView([latitude, longitude], 17, {
+      animate: true,
+    });
+  }, [latitude, longitude, onLocationChange]);
 
   return (
     <div className="overflow-hidden rounded-2xl border border-border">
-      <div
-        ref={mapContainerRef}
-        className="h-[380px] w-full"
-      />
+      <div ref={mapContainerRef} className="h-[380px] w-full" />
 
       <div className="flex items-center gap-2 border-t border-border bg-muted/40 px-4 py-3 text-xs text-muted-foreground">
         <MapPin className="h-4 w-4 text-primary" />
-
-        Click on the map to place the pin, or drag the
-        existing pin to the exact property location.
+        Click on the map to place the pin, or drag the existing pin to the exact property location.
       </div>
     </div>
   );
@@ -1831,15 +1430,8 @@ function Field({
   className?: string;
 }) {
   return (
-    <div
-      className={cn(
-        "space-y-1.5",
-        className,
-      )}
-    >
-      <Label className="text-sm font-medium">
-        {label}
-      </Label>
+    <div className={cn("space-y-1.5", className)}>
+      <Label className="text-sm font-medium">{label}</Label>
 
       {children}
     </div>
@@ -1852,22 +1444,14 @@ function Field({
  * ==============================================================
  */
 
-function Stat({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
+function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-xl bg-muted/60 px-4 py-3">
       <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
         {label}
       </p>
 
-      <p className="mt-0.5 font-semibold">
-        {value}
-      </p>
+      <p className="mt-0.5 font-semibold">{value}</p>
     </div>
   );
 }

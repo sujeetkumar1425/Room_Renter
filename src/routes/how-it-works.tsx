@@ -1,7 +1,4 @@
-import {
-  createFileRoute,
-  Link,
-} from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 
 import {
   MapPin,
@@ -17,9 +14,7 @@ import {
 import { Page } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 
-export const Route = createFileRoute(
-  "/how-it-works",
-)({
+export const Route = createFileRoute("/how-it-works")({
   head: () => ({
     meta: [
       {
@@ -94,10 +89,8 @@ function HowItWorksPage() {
   return (
     <Page>
       <div className="container-page py-10 sm:py-14">
-
         {/* HERO */}
         <section className="mx-auto max-w-3xl text-center">
-
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
             <Heart className="h-7 w-7 text-primary" />
           </div>
@@ -111,27 +104,20 @@ function HowItWorksPage() {
           </h1>
 
           <p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
-            From finding the right room to connecting with the owner
-            and moving in — Room Renter keeps the entire journey simple.
+            From finding the right room to connecting with the owner and moving in — Room Renter
+            keeps the entire journey simple.
           </p>
-
         </section>
 
         {/* STEPS */}
         <section className="mt-14">
-
           <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
-
             {steps.map((step) => {
               const Icon = step.icon;
 
               return (
-                <div
-                  key={step.number}
-                  className="card-surface relative p-6"
-                >
+                <div key={step.number} className="card-surface relative p-6">
                   <div className="flex items-center justify-between">
-
                     <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10">
                       <Icon className="h-5 w-5 text-primary" />
                     </div>
@@ -139,58 +125,32 @@ function HowItWorksPage() {
                     <span className="text-3xl font-bold text-muted-foreground/20">
                       {step.number}
                     </span>
-
                   </div>
 
-                  <h2 className="mt-6 text-lg font-bold">
-                    {step.title}
-                  </h2>
+                  <h2 className="mt-6 text-lg font-bold">{step.title}</h2>
 
-                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                    {step.description}
-                  </p>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">{step.description}</p>
                 </div>
               );
             })}
-
           </div>
-
         </section>
 
         {/* JOURNEY */}
         <section className="mt-14 rounded-3xl bg-muted/50 p-6 sm:p-10">
-
           <div className="mx-auto max-w-3xl text-center">
+            <p className="text-sm font-semibold text-primary">YOUR RENTING JOURNEY</p>
 
-            <p className="text-sm font-semibold text-primary">
-              YOUR RENTING JOURNEY
-            </p>
-
-            <h2 className="mt-2 text-2xl font-bold sm:text-3xl">
-              Everything in one place
-            </h2>
+            <h2 className="mt-2 text-2xl font-bold sm:text-3xl">Everything in one place</h2>
 
             <p className="mt-3 text-sm leading-6 text-muted-foreground">
-              Search, compare, save, connect and move — without
-              jumping between different platforms.
+              Search, compare, save, connect and move — without jumping between different platforms.
             </p>
-
           </div>
 
           <div className="mt-8 flex flex-col items-center justify-center gap-3 md:flex-row">
-
-            {[
-              "Search",
-              "Compare",
-              "Save",
-              "Connect",
-              "Move In",
-            ].map((item, index, array) => (
-              <div
-                key={item}
-                className="flex items-center gap-3"
-              >
-
+            {["Search", "Compare", "Save", "Connect", "Move In"].map((item, index, array) => (
+              <div key={item} className="flex items-center gap-3">
                 <div className="rounded-full border border-border bg-background px-5 py-2.5 text-sm font-semibold shadow-sm">
                   {item}
                 </div>
@@ -198,31 +158,22 @@ function HowItWorksPage() {
                 {index < array.length - 1 && (
                   <ArrowRight className="hidden h-4 w-4 text-primary md:block" />
                 )}
-
               </div>
             ))}
-
           </div>
-
         </section>
 
         {/* BENEFITS */}
         <section className="mt-14">
-
           <div className="text-center">
-
-            <p className="text-sm font-semibold text-primary">
-              WHY USE ROOM RENTER
-            </p>
+            <p className="text-sm font-semibold text-primary">WHY USE ROOM RENTER</p>
 
             <h2 className="mt-2 text-2xl font-bold sm:text-3xl">
               Built around your renting experience
             </h2>
-
           </div>
 
           <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-
             {benefits.map((benefit) => {
               const Icon = benefit.icon;
 
@@ -231,50 +182,32 @@ function HowItWorksPage() {
                   key={benefit.title}
                   className="rounded-2xl border border-border bg-background p-5"
                 >
-
                   <Icon className="h-5 w-5 text-primary" />
 
-                  <h3 className="mt-4 font-semibold">
-                    {benefit.title}
-                  </h3>
+                  <h3 className="mt-4 font-semibold">{benefit.title}</h3>
 
-                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                    {benefit.text}
-                  </p>
-
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">{benefit.text}</p>
                 </div>
               );
             })}
-
           </div>
-
         </section>
 
         {/* CTA */}
         <section className="mt-14 rounded-3xl bg-primary p-8 text-center text-primary-foreground sm:p-12">
-
-          <h2 className="text-2xl font-bold sm:text-3xl">
-            Ready to find your next room?
-          </h2>
+          <h2 className="text-2xl font-bold sm:text-3xl">Ready to find your next room?</h2>
 
           <p className="mx-auto mt-3 max-w-xl text-sm leading-6 opacity-90">
-            Explore available rooms and find a place that fits
-            your budget, lifestyle and location.
+            Explore available rooms and find a place that fits your budget, lifestyle and location.
           </p>
 
-          <Button
-            asChild
-            variant="secondary"
-            className="mt-6 rounded-xl"
-          >
+          <Button asChild variant="secondary" className="mt-6 rounded-xl">
             <Link to="/search">
               Find a Room
               <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
           </Button>
-
         </section>
-
       </div>
     </Page>
   );

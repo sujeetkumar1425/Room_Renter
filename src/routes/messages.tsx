@@ -1,5 +1,5 @@
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
-import { MessageSquare, Send, ArrowLeft, Loader2, UserRound } from "lucide-react";
+import { ArrowLeft, Loader2, MessageSquare, Send, UserRound } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { Page } from "@/components/Layout";
@@ -22,6 +22,7 @@ type MessageRow = {
   sender_id: string;
   body: string;
   created_at: string;
+  read_at?: string | null;
 };
 
 export const Route = createFileRoute("/messages")({
@@ -29,23 +30,37 @@ export const Route = createFileRoute("/messages")({
     propertyId: typeof s.propertyId === "string" ? s.propertyId : undefined,
     landlordId: typeof s.landlordId === "string" ? s.landlordId : undefined,
   }),
+
   beforeLoad: async () => {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    if (!session) throw redirect({ to: "/login" });
+    const { data, error } = await supabase
+      .from("conversations")
+      .select("id, property_id, renter_id, landlord_id, created_at, updated_at")
+      .or(`renter_id.eq.${user.id},landlord_id.eq.${user.id}`)
+      .order("updated_at", { ascending: false });
+
+    if (error) {
+      console.error("Conversations:", error);
+    }
+
+    const rows = (data ?? []) as Conversation[];
   },
+
   head: () => ({
     meta: [
       { title: "Messages — Room Renter" },
-      { name: "description", content: "Chat with room owners on Room Renter." },
+      {
+        name: "description",
+        content: "Chat directly with property owners on Room Renter.",
+      },
     ],
   }),
+
   component: MessagesPage,
 });
 
 function MessagesPage() {
   const search = Route.useSearch();
+
   const [userId, setUserId] = useState<string | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -59,27 +74,37 @@ function MessagesPage() {
     [conversations, selectedId],
   );
 
+  // ---------------------------------------------------------
+  // LOAD CONVERSATIONS
+  // ---------------------------------------------------------
   const loadConversations = async () => {
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) return;
+
+    if (!user) {
+      setLoading(false);
+      return;
+    }
 
     setUserId(user.id);
 
-    const { data: conversationData, error } = await supabase
+    const { data, error } = await supabase
       .from("conversations")
       .select("id, property_id, renter_id, landlord_id, created_at, updated_at")
       .or(`renter_id.eq.${user.id},landlord_id.eq.${user.id}`)
       .order("updated_at", { ascending: false });
 
-    let rows = (conversationData ?? []) as Conversation[];
     if (error) {
       console.error("Conversations:", error);
-      rows = [];
+      //data = [];
     }
 
-    // Starting a conversation from a property page.
+    let rows = (data ?? []) as Conversation[];
+
+    // -------------------------------------------------------
+    // START DIRECT CONVERSATION FROM PROPERTY PAGE
+    // -------------------------------------------------------
     if (search.propertyId && search.landlordId && user.id !== search.landlordId) {
       const propertyId = Number(search.propertyId);
 
@@ -91,9 +116,11 @@ function MessagesPage() {
             conversation.landlord_id === search.landlordId,
         );
 
+        // Existing conversation
         if (existing) {
           setSelectedId(existing.id);
         } else {
+          // Create new conversation
           const { data: created, error: createError } = await supabase
             .from("conversations")
             .insert({
@@ -105,8 +132,11 @@ function MessagesPage() {
             .single();
 
           if (!createError && created) {
-            rows = [created as Conversation, ...rows];
-            setSelectedId(created.id);
+            const newConversation = created as Conversation;
+
+            rows = [newConversation, ...rows];
+
+            setSelectedId(newConversation.id);
           } else if (createError) {
             console.error("Create conversation:", createError);
           }
@@ -115,16 +145,22 @@ function MessagesPage() {
     }
 
     setConversations(rows);
-    if (!selectedId && rows.length > 0) {
+
+    // Select first conversation if nothing is selected
+    if (selectedId === null && rows.length > 0) {
       setSelectedId(rows[0].id);
     }
+
     setLoading(false);
   };
 
+  // ---------------------------------------------------------
+  // LOAD MESSAGES
+  // ---------------------------------------------------------
   const loadMessages = async (conversationId: number) => {
     const { data, error } = await supabase
       .from("messages")
-      .select("id, conversation_id, sender_id, body, created_at")
+      .select("id, conversation_id, sender_id, body, created_at, read_at")
       .eq("conversation_id", conversationId)
       .order("created_at", { ascending: true });
 
@@ -136,21 +172,35 @@ function MessagesPage() {
 
     setMessages((data ?? []) as MessageRow[]);
 
-    // Mark received messages as read.
+    // -------------------------------------------------------
+    // MARK RECEIVED MESSAGES AS READ
+    // -------------------------------------------------------
     if (userId) {
-      await supabase
+      const { error: readError } = await supabase
         .from("messages")
-        .update({ read_at: new Date().toISOString() })
+        .update({
+          read_at: new Date().toISOString(),
+        })
         .eq("conversation_id", conversationId)
         .neq("sender_id", userId)
         .is("read_at", null);
+
+      if (readError) {
+        console.error("Mark messages as read:", readError);
+      }
     }
   };
 
+  // ---------------------------------------------------------
+  // INITIAL LOAD
+  // ---------------------------------------------------------
   useEffect(() => {
     void loadConversations();
   }, [search.propertyId, search.landlordId]);
 
+  // ---------------------------------------------------------
+  // LOAD SELECTED CONVERSATION + REALTIME
+  // ---------------------------------------------------------
   useEffect(() => {
     if (!selectedId) {
       setMessages([]);
@@ -171,9 +221,14 @@ function MessagesPage() {
         },
         (payload) => {
           const message = payload.new as MessageRow;
-          setMessages((current) =>
-            current.some((item) => item.id === message.id) ? current : [...current, message],
-          );
+
+          setMessages((current) => {
+            if (current.some((item) => item.id === message.id)) {
+              return current;
+            }
+
+            return [...current, message];
+          });
         },
       )
       .subscribe();
@@ -183,9 +238,15 @@ function MessagesPage() {
     };
   }, [selectedId, userId]);
 
+  // ---------------------------------------------------------
+  // SEND MESSAGE
+  // ---------------------------------------------------------
   const sendMessage = async () => {
     const body = text.trim();
-    if (!body || !selectedConversation || !userId || sending) return;
+
+    if (!body || !selectedConversation || !userId || sending) {
+      return;
+    }
 
     setSending(true);
 
@@ -196,22 +257,34 @@ function MessagesPage() {
         sender_id: userId,
         body,
       })
-      .select("id, conversation_id, sender_id, body, created_at")
+      .select("id, conversation_id, sender_id, body, created_at, read_at")
       .single();
 
     if (error) {
       console.error("Send message:", error);
       alert(error.message);
     } else if (data) {
-      setMessages((current) =>
-        current.some((item) => item.id === data.id) ? current : [...current, data as MessageRow],
-      );
+      const newMessage = data as MessageRow;
+
+      setMessages((current) => {
+        if (current.some((item) => item.id === newMessage.id)) {
+          return current;
+        }
+
+        return [...current, newMessage];
+      });
+
       setText("");
+
+      // Move conversation to the top
       setConversations((current) =>
         current
           .map((conversation) =>
             conversation.id === selectedConversation.id
-              ? { ...conversation, updated_at: new Date().toISOString() }
+              ? {
+                  ...conversation,
+                  updated_at: new Date().toISOString(),
+                }
               : conversation,
           )
           .sort((a, b) => b.updated_at.localeCompare(a.updated_at)),
@@ -221,12 +294,29 @@ function MessagesPage() {
     setSending(false);
   };
 
+  // ---------------------------------------------------------
+  // FORMAT TIME
+  // ---------------------------------------------------------
+  const formatMessageTime = (date: string) => {
+    return new Date(date).toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  // ---------------------------------------------------------
+  // UI
+  // ---------------------------------------------------------
   return (
     <Page>
       <div className="container-page py-6 sm:py-10">
+        {/* PAGE HEADER */}
         <div className="mb-5">
           <h1 className="text-3xl font-bold tracking-tight">Messages</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Chat directly with property owners.</p>
+
+          <p className="mt-1 text-sm text-muted-foreground">
+            Chat directly with property owners and room seekers.
+          </p>
         </div>
 
         {loading ? (
@@ -236,117 +326,159 @@ function MessagesPage() {
           </div>
         ) : (
           <div className="grid min-h-[620px] overflow-hidden rounded-2xl border border-border bg-card md:grid-cols-[280px_1fr]">
+            {/* =================================================
+                CONVERSATION LIST
+            ================================================== */}
             <aside className={`border-r border-border ${selectedId ? "hidden md:block" : "block"}`}>
               <div className="border-b border-border p-4 font-semibold">Conversations</div>
 
               {conversations.length === 0 ? (
                 <div className="p-6 text-center text-sm text-muted-foreground">
                   <MessageSquare className="mx-auto h-7 w-7" />
+
                   <p className="mt-3">No conversations yet.</p>
+
+                  <p className="mt-1 text-xs">
+                    Open a property and contact the owner to start chatting.
+                  </p>
                 </div>
               ) : (
                 <div className="divide-y divide-border">
-                  {conversations.map((conversation) => (
-                    <button
-                      key={conversation.id}
-                      onClick={() => setSelectedId(conversation.id)}
-                      className={`w-full p-4 text-left transition-colors ${
-                        selectedId === conversation.id ? "bg-primary/5" : "hover:bg-muted/50"
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10">
-                          <UserRound className="h-4 w-4 text-primary" />
-                        </span>
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold">
-                            {conversation.renter_id === userId ? "Property Owner" : "Room Seeker"}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            Property #{conversation.property_id ?? "—"}
-                          </p>
+                  {conversations.map((conversation) => {
+                    const isRenter = conversation.renter_id === userId;
+
+                    const isSelected = selectedId === conversation.id;
+
+                    return (
+                      <button
+                        key={conversation.id}
+                        type="button"
+                        onClick={() => setSelectedId(conversation.id)}
+                        className={`w-full p-4 text-left transition-colors ${
+                          isSelected ? "bg-primary/5" : "hover:bg-muted/50"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                            <UserRound className="h-4 w-4 text-primary" />
+                          </span>
+
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-semibold">
+                              {isRenter ? "Property Owner" : "Room Seeker"}
+                            </p>
+
+                            <p className="truncate text-xs text-muted-foreground">
+                              Property #{conversation.property_id ?? "—"}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                    </button>
-                  ))}
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </aside>
 
+            {/* =================================================
+                CHAT SECTION
+            ================================================== */}
             <section
               className={`flex min-h-[620px] flex-col ${!selectedId ? "hidden md:flex" : "flex"}`}
             >
               {!selectedId ? (
                 <div className="flex flex-1 flex-col items-center justify-center p-8 text-center">
                   <MessageSquare className="h-10 w-10 text-muted-foreground" />
+
                   <h2 className="mt-4 font-semibold">Select a conversation</h2>
+
                   <p className="mt-1 text-sm text-muted-foreground">
-                    Your owner chats will appear here.
+                    Your conversations will appear here.
                   </p>
                 </div>
               ) : (
                 <>
+                  {/* CHAT HEADER */}
                   <div className="flex items-center gap-3 border-b border-border p-4">
                     <button
-                      className="md:hidden"
+                      type="button"
+                      className="rounded-md p-1 hover:bg-muted md:hidden"
                       onClick={() => setSelectedId(null)}
                       aria-label="Back to conversations"
                     >
                       <ArrowLeft className="h-5 w-5" />
                     </button>
-                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10">
+
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10">
                       <UserRound className="h-4 w-4 text-primary" />
                     </div>
-                    <div>
+
+                    <div className="min-w-0">
                       <p className="font-semibold">
                         {selectedConversation?.renter_id === userId
                           ? "Property Owner"
                           : "Room Seeker"}
                       </p>
+
                       <p className="text-xs text-muted-foreground">
                         Property #{selectedConversation?.property_id ?? "—"}
                       </p>
                     </div>
                   </div>
 
+                  {/* =================================================
+                      MESSAGES
+                  ================================================== */}
                   <div className="flex-1 space-y-3 overflow-y-auto p-4">
                     {messages.length === 0 ? (
                       <div className="flex h-full items-center justify-center text-center">
                         <div>
                           <MessageSquare className="mx-auto h-8 w-8 text-muted-foreground" />
+
                           <p className="mt-3 text-sm text-muted-foreground">
                             Start the conversation.
+                          </p>
+
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            Send a message to the{" "}
+                            {selectedConversation?.renter_id === userId
+                              ? "property owner"
+                              : "room seeker"}
+                            .
                           </p>
                         </div>
                       </div>
                     ) : (
-                      messages.map((message) => (
-                        <div
-                          key={message.id}
-                          className={`flex ${
-                            message.sender_id === userId ? "justify-end" : "justify-start"
-                          }`}
-                        >
+                      messages.map((message) => {
+                        const isMine = message.sender_id === userId;
+
+                        return (
                           <div
-                            className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm ${
-                              message.sender_id === userId
-                                ? "rounded-br-md bg-primary text-primary-foreground"
-                                : "rounded-bl-md bg-muted"
-                            }`}
+                            key={message.id}
+                            className={`flex ${isMine ? "justify-end" : "justify-start"}`}
                           >
-                            <p className="whitespace-pre-wrap break-words">{message.body}</p>
-                            <p className="mt-1 text-[10px] opacity-70">
-                              {new Date(message.created_at).toLocaleTimeString([], {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}
-                            </p>
+                            <div
+                              className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm ${
+                                isMine
+                                  ? "rounded-br-md bg-primary text-primary-foreground"
+                                  : "rounded-bl-md bg-muted"
+                              }`}
+                            >
+                              <p className="whitespace-pre-wrap break-words">{message.body}</p>
+
+                              <p className="mt-1 text-[10px] opacity-70">
+                                {formatMessageTime(message.created_at)}
+                              </p>
+                            </div>
                           </div>
-                        </div>
-                      ))
+                        );
+                      })
                     )}
                   </div>
 
+                  {/* =================================================
+                      MESSAGE INPUT
+                  ================================================== */}
                   <div className="border-t border-border p-3">
                     <form
                       onSubmit={(event) => {
@@ -360,13 +492,21 @@ function MessagesPage() {
                         onChange={(event) => setText(event.target.value)}
                         placeholder="Write a message..."
                         maxLength={5000}
+                        disabled={sending}
+                        autoComplete="off"
                       />
+
                       <Button
                         type="submit"
                         disabled={!text.trim() || sending}
                         className="rounded-xl"
                       >
-                        <Send className="h-4 w-4" />
+                        {sending ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Send className="h-4 w-4" />
+                        )}
+
                         <span className="sr-only">Send</span>
                       </Button>
                     </form>

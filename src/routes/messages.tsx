@@ -584,7 +584,8 @@ function MessagesPage() {
 
   return (
     <Page>
-      <div className="mx-auto flex h-[calc(100vh-140px)] max-w-7xl overflow-hidden rounded-2xl border bg-background shadow-sm">
+      <div className="mx-auto flex h-[calc(100dvh-220px)] max-w-7xl overflow-hidden rounded-2xl border bg-background shadow-sm md:h-[calc(100vh-140px)]">
+        {" "}
         {/* =====================================
             CONVERSATION LIST
         ====================================== */}
@@ -674,7 +675,6 @@ function MessagesPage() {
             </div>
           </div>
         </aside>
-
         {/* =====================================
             CHAT AREA
         ====================================== */}
@@ -718,7 +718,8 @@ function MessagesPage() {
               {/* =================================
                   MESSAGES
               ================================== */}
-              <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+              <div className="min-h-0 flex-1 overflow-y-auto p-4 pb-6 sm:p-6">
+                {" "}
                 {loadingMessages ? (
                   <div className="flex h-full items-center justify-center">
                     <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />

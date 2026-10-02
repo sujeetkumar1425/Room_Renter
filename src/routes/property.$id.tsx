@@ -16,6 +16,7 @@ import {
   UtensilsCrossed,
   Phone,
   CalendarCheck,
+  Loader2,
   FileSignature,
   ShieldCheck,
 } from "lucide-react";
@@ -28,6 +29,10 @@ import { fetchPropertyById, fetchListedProperties } from "@/lib/properties";
 import { PropertyCard } from "@/components/PropertyCard";
 import { useApp } from "@/lib/app-context";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/lib/supabase";
+import { PropertyMap } from "@/components/PropertyMap";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 export const Route = createFileRoute("/property/$id")({
   loader: async ({ params }) => {
@@ -113,7 +118,73 @@ function PropertyPage() {
   const { property, similar } = Route.useLoaderData();
   const { isSaved, toggleSaved } = useApp();
   const [active, setActive] = useState(0);
+  const [bookingDate, setBookingDate] = useState("");
+  const [bookingTime, setBookingTime] = useState("");
+  const [bookingNotes, setBookingNotes] = useState("");
+  const [bookingLoading, setBookingLoading] = useState(false);
   const saved = isSaved(property.id);
+
+  const submitBooking = async () => {
+    if (bookingLoading) return;
+
+    if (!bookingDate || !bookingTime) {
+      toast.error("Select a visit date and time.");
+      return;
+    }
+
+    const selected = new Date(`${bookingDate}T${bookingTime}:00`);
+    if (Number.isNaN(selected.getTime()) || selected.getTime() <= Date.now()) {
+      toast.error("Choose a future date and time.");
+      return;
+    }
+
+    setBookingLoading(true);
+
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        toast.error("Please log in as a renter to book a visit.");
+        return;
+      }
+
+      if (!property.landlordId) {
+        toast.error("This property has no landlord assigned.");
+        return;
+      }
+
+      const { error } = await supabase.from("bookings").insert({
+        property_id: Number(property.id),
+        renter_id: user.id,
+        landlord_id: property.landlordId,
+        visit_date: bookingDate,
+        visit_time: bookingTime,
+        notes: bookingNotes.trim() || null,
+      });
+
+      if (error) {
+        if (error.code === "23505") {
+          toast.error("You already have a booking for this property at that time.");
+        } else {
+          console.error("Booking creation error:", error);
+          toast.error(error.message || "Could not create booking.");
+        }
+        return;
+      }
+
+      toast.success("Visit request sent to the landlord.");
+      setBookingDate("");
+      setBookingTime("");
+      setBookingNotes("");
+    } catch (error) {
+      console.error("Booking error:", error);
+      toast.error("Something went wrong while creating the booking.");
+    } finally {
+      setBookingLoading(false);
+    }
+  };
 
   const breakdown = [
     { label: "Cleanliness", value: 92 },
@@ -260,19 +331,20 @@ function PropertyPage() {
 
             <section>
               <h2 className="text-lg font-bold">Location & nearby</h2>
-              <div className="relative mt-3 h-56 overflow-hidden rounded-2xl border border-border bg-[oklch(0.95_0.02_190)]">
-                <div
-                  className="absolute inset-0 opacity-70"
-                  style={{
-                    backgroundImage:
-                      "linear-gradient(oklch(0.9 0.02 190) 1px, transparent 1px), linear-gradient(90deg, oklch(0.9 0.02 190) 1px, transparent 1px)",
-                    backgroundSize: "44px 44px",
-                  }}
-                />
-                <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-foreground px-3 py-1.5 text-xs font-bold text-background shadow-[var(--shadow-float)]">
-                  {property.area}
-                </span>
-              </div>
+              {property.latitude !== null && property.longitude !== null ? (
+                <div className="mt-3 overflow-hidden rounded-2xl">
+                  <PropertyMap
+                    latitude={property.latitude}
+                    longitude={property.longitude}
+                    title={property.title}
+                    height="360px"
+                  />
+                </div>
+              ) : (
+                <div className="mt-3 flex h-56 items-center justify-center rounded-2xl border border-border bg-muted text-sm text-muted-foreground">
+                  Location coordinates are not available for this property.
+                </div>
+              )}
               <div className="mt-3 grid gap-2 sm:grid-cols-2">
                 {property.nearby.map((n) => (
                   <div
@@ -369,13 +441,78 @@ function PropertyPage() {
                     <Phone className="h-4 w-4" /> Contact Owner
                   </Link>
                 </Button>
-                <Button size="lg" variant="outline" className="w-full rounded-xl" disabled>
-                  <CalendarCheck className="h-4 w-4" /> Visits coming soon
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="w-full rounded-xl"
+                  onClick={() =>
+                    document.getElementById("book-visit")?.scrollIntoView({ behavior: "smooth" })
+                  }
+                >
+                  <CalendarCheck className="h-4 w-4" /> Schedule a Visit
                 </Button>
               </div>
               <p className="mt-3 text-center text-xs text-muted-foreground">
                 No brokerage. Owner responds {property.landlord.responseTime}.
               </p>
+            </div>
+
+            <div id="book-visit" className="card-surface p-5">
+              <div className="flex items-center gap-2">
+                <CalendarCheck className="h-5 w-5 text-primary" />
+                <h3 className="font-bold">Book a room visit</h3>
+              </div>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Pick a convenient date and time. The landlord will see this request in their
+                dashboard.
+              </p>
+
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+                <div>
+                  <label htmlFor="booking-date" className="mb-1.5 block text-xs font-medium">
+                    Date
+                  </label>
+                  <Input
+                    id="booking-date"
+                    type="date"
+                    min={new Date().toISOString().slice(0, 10)}
+                    value={bookingDate}
+                    onChange={(event) => setBookingDate(event.target.value)}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="booking-time" className="mb-1.5 block text-xs font-medium">
+                    Time
+                  </label>
+                  <Input
+                    id="booking-time"
+                    type="time"
+                    value={bookingTime}
+                    onChange={(event) => setBookingTime(event.target.value)}
+                  />
+                </div>
+              </div>
+
+              <Textarea
+                className="mt-3 min-h-20"
+                placeholder="Optional note for the landlord"
+                value={bookingNotes}
+                onChange={(event) => setBookingNotes(event.target.value)}
+                maxLength={1000}
+              />
+
+              <Button
+                className="mt-3 w-full rounded-xl"
+                onClick={() => void submitBooking()}
+                disabled={bookingLoading}
+              >
+                {bookingLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <CalendarCheck className="h-4 w-4" />
+                )}
+                {bookingLoading ? "Sending request..." : "Request Visit"}
+              </Button>
             </div>
 
             <div className="card-surface border-primary/25 bg-accent/40 p-5">
@@ -453,8 +590,13 @@ function PropertyPage() {
             Contact
           </Link>
         </Button>
-        <Button disabled className="flex-1 rounded-xl">
-          Visits coming soon
+        <Button
+          className="flex-1 rounded-xl"
+          onClick={() =>
+            document.getElementById("book-visit")?.scrollIntoView({ behavior: "smooth" })
+          }
+        >
+          Schedule Visit
         </Button>
       </div>
     </Page>

@@ -176,7 +176,10 @@ function BookingsPage() {
               </p>
               {role === "renter" ? (
                 <Button asChild className="mt-5 rounded-xl">
-                  <Link to="/search" search={{ city: undefined, type: undefined, budget: undefined }}>
+                  <Link
+                    to="/search"
+                    search={{ city: undefined, type: undefined, budget: undefined }}
+                  >
                     Find a room
                   </Link>
                 </Button>

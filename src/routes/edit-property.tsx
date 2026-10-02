@@ -299,7 +299,10 @@ function EditPropertyPage() {
                   <Input value={form.city} onChange={(e) => update("city", e.target.value)} />
                 </Field>
                 <Field label="Locality">
-                  <Input value={form.locality} onChange={(e) => update("locality", e.target.value)} />
+                  <Input
+                    value={form.locality}
+                    onChange={(e) => update("locality", e.target.value)}
+                  />
                 </Field>
               </div>
 
@@ -454,7 +457,11 @@ function EditPropertyPage() {
               onClick={() => void save()}
               disabled={saving}
             >
-              {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+              {saving ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Save className="mr-2 h-4 w-4" />
+              )}
               {saving ? "Saving..." : "Save Changes"}
             </Button>
           </section>

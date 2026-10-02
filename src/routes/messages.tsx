@@ -1,32 +1,33 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { ArrowLeft, Loader2, MessageSquare, Send, UserRound } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type KeyboardEvent } from "react";
+
 import { Page } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabase";
 
-type Conversation = {
-  id: number;
-  property_id: number | null;
-  renter_id: string;
-  landlord_id: string;
-  created_at: string;
-  updated_at: string;
-};
-
 type MessageRow = {
   id: number;
-  conversation_id: number;
   sender_id: string;
-  body: string;
+  receiver_id: string;
+  property_id: number | null;
+  message: string;
   created_at: string;
-  read_at?: string | null;
+};
+
+type Conversation = {
+  key: string;
+  property_id: number | null;
+  other_user_id: string;
+  last_message: string;
+  updated_at: string;
 };
 
 export const Route = createFileRoute("/messages")({
   validateSearch: (search: Record<string, unknown>) => ({
     propertyId: typeof search.propertyId === "string" ? search.propertyId : undefined,
+
     landlordId: typeof search.landlordId === "string" ? search.landlordId : undefined,
   }),
 
@@ -40,25 +41,82 @@ export const Route = createFileRoute("/messages")({
     }
   },
 
+  head: () => ({
+    meta: [
+      {
+        title: "Messages — Room Renter",
+      },
+      {
+        name: "description",
+        content: "Chat directly with property owners on Room Renter.",
+      },
+    ],
+  }),
+
   component: MessagesPage,
 });
+
+function makeConversationKey(propertyId: number | null, otherUserId: string) {
+  return `${propertyId ?? "none"}:${otherUserId}`;
+}
 
 function MessagesPage() {
   const search = Route.useSearch();
 
   const [userId, setUserId] = useState<string | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [messages, setMessages] = useState<MessageRow[]>([]);
   const [text, setText] = useState("");
   const [loadingConversations, setLoadingConversations] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [sending, setSending] = useState(false);
 
+  /*
+   * Property page sends:
+   *
+   * /messages?propertyId=7&landlordId=UUID
+   *
+   * This lets us open a new chat even before the first
+   * message has been sent.
+   */
+  const directPropertyId = useMemo(() => {
+    if (!search.propertyId) {
+      return null;
+    }
+
+    const value = Number(search.propertyId);
+
+    return Number.isFinite(value) ? value : null;
+  }, [search.propertyId]);
+
+  const directLandlordId = search.landlordId ?? null;
+
+  const directConversationKey = useMemo(() => {
+    if (directPropertyId === null || !directLandlordId) {
+      return null;
+    }
+
+    return makeConversationKey(directPropertyId, directLandlordId);
+  }, [directPropertyId, directLandlordId]);
+
   const selectedConversation = useMemo(
-    () => conversations.find((conversation) => conversation.id === selectedId) ?? null,
-    [conversations, selectedId],
+    () => conversations.find((conversation) => conversation.key === selectedKey) ?? null,
+    [conversations, selectedKey],
   );
+
+  /*
+   * If the user came directly from a property page,
+   * we can have a selected chat even when there are
+   * no messages yet.
+   */
+  const selectedPropertyId =
+    selectedConversation?.property_id ??
+    (selectedKey === directConversationKey ? directPropertyId : null);
+
+  const selectedOtherUserId =
+    selectedConversation?.other_user_id ??
+    (selectedKey === directConversationKey ? directLandlordId : null);
 
   const loadConversations = useCallback(async () => {
     const {
@@ -66,6 +124,9 @@ function MessagesPage() {
     } = await supabase.auth.getUser();
 
     if (!user) {
+      setUserId(null);
+      setConversations([]);
+      setSelectedKey(null);
       setLoadingConversations(false);
       return;
     }
@@ -73,150 +134,156 @@ function MessagesPage() {
     setUserId(user.id);
 
     const { data, error } = await supabase
-      .from("conversations")
-      .select("id, property_id, renter_id, landlord_id, created_at, updated_at")
-      .or(`renter_id.eq.${user.id},landlord_id.eq.${user.id}`)
-      .order("updated_at", { ascending: false });
+      .from("messages")
+      .select("id, sender_id, receiver_id, property_id, message, created_at")
+      .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
+      .order("created_at", {
+        ascending: false,
+      });
 
     if (error) {
-      console.error("Conversations:", error);
+      console.error("Load messages:", error);
+      setConversations([]);
+      setLoadingConversations(false);
+      return;
     }
 
-    let rows = (data ?? []) as Conversation[];
+    const rows = (data ?? []) as MessageRow[];
 
-    /*
-     * Start a direct conversation when the user comes from
-     * a property details page.
-     */
-    if (search.propertyId && search.landlordId && user.id !== search.landlordId) {
-      const propertyId = Number(search.propertyId);
+    const grouped = new Map<string, Conversation>();
 
-      if (Number.isFinite(propertyId)) {
-        const existing = rows.find(
-          (conversation) =>
-            conversation.property_id === propertyId &&
-            conversation.renter_id === user.id &&
-            conversation.landlord_id === search.landlordId,
-        );
+    for (const row of rows) {
+      const otherUserId = row.sender_id === user.id ? row.receiver_id : row.sender_id;
 
-        if (existing) {
-          setSelectedId(existing.id);
-        } else {
-          const { data: created, error: createError } = await supabase
-            .from("conversations")
-            .insert({
-              property_id: propertyId,
-              renter_id: user.id,
-              landlord_id: search.landlordId,
-            })
-            .select("id, property_id, renter_id, landlord_id, created_at, updated_at")
-            .single();
+      const key = makeConversationKey(row.property_id, otherUserId);
 
-          if (createError) {
-            console.error("Create conversation:", createError);
-          } else if (created) {
-            const newConversation = created as Conversation;
-
-            rows = [newConversation, ...rows];
-            setSelectedId(newConversation.id);
-          }
-        }
+      if (!grouped.has(key)) {
+        grouped.set(key, {
+          key,
+          property_id: row.property_id,
+          other_user_id: otherUserId,
+          last_message: row.message,
+          updated_at: row.created_at,
+        });
       }
     }
 
-    rows.sort((a, b) => b.updated_at.localeCompare(a.updated_at));
+    const result = Array.from(grouped.values()).sort((a, b) =>
+      b.updated_at.localeCompare(a.updated_at),
+    );
 
-    setConversations(rows);
+    setConversations(result);
 
-    if (rows.length > 0 && selectedId === null && !search.propertyId) {
-      setSelectedId(rows[0].id);
+    /*
+     * If opened from a property page, always open
+     * that property/landlord chat.
+     */
+    if (directConversationKey) {
+      setSelectedKey(directConversationKey);
+    } else {
+      setSelectedKey((current) => {
+        if (current && result.some((conversation) => conversation.key === current)) {
+          return current;
+        }
+
+        return result[0]?.key ?? null;
+      });
     }
 
     setLoadingConversations(false);
-  }, [search.propertyId, search.landlordId, selectedId]);
+  }, [directConversationKey]);
 
   const loadMessages = useCallback(
-    async (conversationId: number) => {
-      if (!userId) {
+    async (propertyId: number | null, otherUserId: string | null) => {
+      if (!userId || !otherUserId) {
+        setMessages([]);
         return;
       }
 
       setLoadingMessages(true);
 
-      const { data, error } = await supabase
+      let query = supabase
         .from("messages")
-        .select("id, conversation_id, sender_id, body, created_at, read_at")
-        .eq("conversation_id", conversationId)
-        .order("created_at", { ascending: true });
+        .select("id, sender_id, receiver_id, property_id, message, created_at")
+        .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`);
+
+      if (propertyId !== null) {
+        query = query.eq("property_id", propertyId);
+      } else {
+        query = query.is("property_id", null);
+      }
+
+      const { data, error } = await query.order("created_at", {
+        ascending: true,
+      });
 
       if (error) {
-        console.error("Messages:", error);
+        console.error("Load conversation:", error);
         setMessages([]);
         setLoadingMessages(false);
         return;
       }
 
-      setMessages((data ?? []) as MessageRow[]);
-
-      const { error: readError } = await supabase
-        .from("messages")
-        .update({
-          read_at: new Date().toISOString(),
-        })
-        .eq("conversation_id", conversationId)
-        .neq("sender_id", userId)
-        .is("read_at", null);
-
-      if (readError) {
-        console.error("Mark messages as read:", readError);
-      }
-
-      setMessages((current) =>
-        current.map((message) =>
-          message.sender_id !== userId && !message.read_at
-            ? {
-                ...message,
-                read_at: new Date().toISOString(),
-              }
-            : message,
-        ),
+      const conversationMessages = ((data ?? []) as MessageRow[]).filter(
+        (message) =>
+          (message.sender_id === userId && message.receiver_id === otherUserId) ||
+          (message.sender_id === otherUserId && message.receiver_id === userId),
       );
 
+      setMessages(conversationMessages);
       setLoadingMessages(false);
     },
     [userId],
   );
 
+  /*
+   * Load conversations when the page opens or the
+   * property/landlord in the URL changes.
+   */
   useEffect(() => {
     void loadConversations();
   }, [loadConversations]);
 
+  /*
+   * Load the selected conversation.
+   */
   useEffect(() => {
-    if (!selectedId) {
+    if (!selectedOtherUserId || selectedPropertyId === null) {
       setMessages([]);
       return;
     }
 
-    void loadMessages(selectedId);
-  }, [loadMessages, selectedId]);
+    void loadMessages(selectedPropertyId, selectedOtherUserId);
+  }, [loadMessages, selectedOtherUserId, selectedPropertyId]);
 
+  /*
+   * Realtime messages.
+   */
   useEffect(() => {
-    if (!selectedId) {
+    if (!userId || selectedPropertyId === null) {
       return;
     }
 
     const channel = supabase
-      .channel(`conversation-${selectedId}`)
+      .channel(`messages-property-${selectedPropertyId}`)
       .on(
         "postgres_changes",
         {
           event: "INSERT",
           schema: "public",
           table: "messages",
-          filter: `conversation_id=eq.${selectedId}`,
+          filter: `property_id=eq.${selectedPropertyId}`,
         },
-        async (payload) => {
+        (payload) => {
           const newMessage = payload.new as MessageRow;
+
+          const belongsToConversation =
+            (newMessage.sender_id === userId && newMessage.receiver_id === selectedOtherUserId) ||
+            (newMessage.sender_id === selectedOtherUserId && newMessage.receiver_id === userId);
+
+          if (!belongsToConversation) {
+            return;
+          }
 
           setMessages((current) => {
             if (current.some((message) => message.id === newMessage.id)) {
@@ -226,17 +293,7 @@ function MessagesPage() {
             return [...current, newMessage];
           });
 
-          if (userId && newMessage.sender_id !== userId) {
-            await supabase
-              .from("messages")
-              .update({
-                read_at: new Date().toISOString(),
-              })
-              .eq("id", newMessage.id)
-              .is("read_at", null);
-          }
-
-          await loadConversations();
+          void loadConversations();
         },
       )
       .subscribe();
@@ -244,12 +301,17 @@ function MessagesPage() {
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [loadConversations, selectedId, userId]);
+  }, [loadConversations, selectedOtherUserId, selectedPropertyId, userId]);
 
   const sendMessage = async () => {
     const body = text.trim();
 
-    if (!body || !selectedConversation || !userId || sending) {
+    if (!body || !userId || !selectedOtherUserId || selectedPropertyId === null || sending) {
+      return;
+    }
+
+    if (userId === selectedOtherUserId) {
+      alert("You cannot message yourself.");
       return;
     }
 
@@ -258,11 +320,12 @@ function MessagesPage() {
     const { data, error } = await supabase
       .from("messages")
       .insert({
-        conversation_id: selectedConversation.id,
         sender_id: userId,
-        body,
+        receiver_id: selectedOtherUserId,
+        property_id: selectedPropertyId,
+        message: body,
       })
-      .select("id, conversation_id, sender_id, body, created_at, read_at")
+      .select("id, sender_id, receiver_id, property_id, message, created_at")
       .single();
 
     if (error) {
@@ -273,28 +336,15 @@ function MessagesPage() {
     }
 
     if (data) {
+      const newMessage = data as MessageRow;
+
       setMessages((current) => {
-        if (current.some((message) => message.id === data.id)) {
+        if (current.some((message) => message.id === newMessage.id)) {
           return current;
         }
 
-        return [...current, data as MessageRow];
+        return [...current, newMessage];
       });
-    }
-
-    /*
-     * Keep the conversation at the top of the list.
-     * If RLS prevents this update, the message itself is still sent.
-     */
-    const { error: updateError } = await supabase
-      .from("conversations")
-      .update({
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", selectedConversation.id);
-
-    if (updateError) {
-      console.error("Update conversation timestamp:", updateError);
     }
 
     setText("");
@@ -303,19 +353,15 @@ function MessagesPage() {
     await loadConversations();
   };
 
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
       void sendMessage();
     }
   };
 
-  const getOtherUserId = (conversation: Conversation) => {
-    if (!userId) {
-      return "";
-    }
-
-    return conversation.renter_id === userId ? conversation.landlord_id : conversation.renter_id;
+  const selectConversation = (conversation: Conversation) => {
+    setSelectedKey(conversation.key);
   };
 
   return (
@@ -324,7 +370,7 @@ function MessagesPage() {
         {/* Conversation list */}
         <aside
           className={`w-full border-r border-border md:w-[340px] ${
-            selectedId ? "hidden md:block" : "block"
+            selectedKey ? "hidden md:block" : "block"
           }`}
         >
           <div className="flex h-full flex-col">
@@ -336,6 +382,7 @@ function MessagesPage() {
 
                 <div>
                   <h1 className="text-lg font-semibold">Messages</h1>
+
                   <p className="text-sm text-muted-foreground">Your conversations</p>
                 </div>
               </div>
@@ -361,14 +408,13 @@ function MessagesPage() {
               ) : (
                 <div className="divide-y">
                   {conversations.map((conversation) => {
-                    const isSelected = conversation.id === selectedId;
-                    const otherUserId = getOtherUserId(conversation);
+                    const isSelected = conversation.key === selectedKey;
 
                     return (
                       <button
-                        key={conversation.id}
+                        key={conversation.key}
                         type="button"
-                        onClick={() => setSelectedId(conversation.id)}
+                        onClick={() => selectConversation(conversation)}
                         className={`flex w-full items-center gap-3 px-5 py-4 text-left transition-colors hover:bg-muted/50 ${
                           isSelected ? "bg-primary/5" : ""
                         }`}
@@ -378,16 +424,14 @@ function MessagesPage() {
                         </div>
 
                         <div className="min-w-0 flex-1">
-                          <p className="font-medium">
-                            {conversation.renter_id === userId ? "Property Owner" : "Room Seeker"}
+                          <p className="font-medium">Property Owner</p>
+
+                          <p className="text-xs text-muted-foreground">
+                            Property #{conversation.property_id ?? "—"}
                           </p>
 
-                          <p className="truncate text-xs text-muted-foreground">
-                            {otherUserId || "Conversation"}
-                          </p>
-
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            {new Date(conversation.updated_at).toLocaleDateString()}
+                          <p className="mt-1 truncate text-xs text-muted-foreground">
+                            {conversation.last_message}
                           </p>
                         </div>
                       </button>
@@ -401,9 +445,9 @@ function MessagesPage() {
 
         {/* Chat */}
         <section
-          className={`flex min-w-0 flex-1 flex-col ${!selectedId ? "hidden md:flex" : "flex"}`}
+          className={`flex min-w-0 flex-1 flex-col ${!selectedKey ? "hidden md:flex" : "flex"}`}
         >
-          {selectedConversation ? (
+          {selectedKey && selectedOtherUserId && selectedPropertyId !== null ? (
             <>
               {/* Chat header */}
               <header className="flex items-center gap-3 border-b px-4 py-3 sm:px-6">
@@ -412,7 +456,7 @@ function MessagesPage() {
                   variant="ghost"
                   size="icon"
                   className="md:hidden"
-                  onClick={() => setSelectedId(null)}
+                  onClick={() => setSelectedKey(null)}
                   title="Back to conversations"
                 >
                   <ArrowLeft className="h-5 w-5" />
@@ -423,11 +467,9 @@ function MessagesPage() {
                 </div>
 
                 <div>
-                  <h2 className="font-semibold">
-                    {selectedConversation.renter_id === userId ? "Property Owner" : "Room Seeker"}
-                  </h2>
+                  <h2 className="font-semibold">Property Owner</h2>
 
-                  <p className="text-xs text-muted-foreground">Direct conversation</p>
+                  <p className="text-xs text-muted-foreground">Property #{selectedPropertyId}</p>
                 </div>
               </header>
 
@@ -446,7 +488,7 @@ function MessagesPage() {
                     <h3 className="font-medium">Start the conversation</h3>
 
                     <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-                      Send a message to discuss the property, visit timing, rent, or anything else.
+                      Ask the property owner about rent, availability, facilities, or a visit.
                     </p>
                   </div>
                 ) : (
@@ -466,7 +508,7 @@ function MessagesPage() {
                                 : "rounded-bl-md bg-muted"
                             }`}
                           >
-                            <p className="whitespace-pre-wrap break-words">{message.body}</p>
+                            <p className="whitespace-pre-wrap break-words">{message.message}</p>
 
                             <p
                               className={`mt-1 text-[10px] ${
@@ -486,21 +528,27 @@ function MessagesPage() {
                 )}
               </div>
 
-              {/* Message input */}
+              {/* Input */}
               <div className="border-t bg-background p-3 sm:p-4">
-                <div className="mx-auto flex max-w-3xl gap-2">
+                <form
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    void sendMessage();
+                  }}
+                  className="mx-auto flex max-w-3xl gap-2"
+                >
                   <Input
                     value={text}
                     onChange={(event) => setText(event.target.value)}
                     onKeyDown={handleKeyDown}
                     placeholder="Type your message..."
+                    maxLength={5000}
                     disabled={sending}
                     className="h-11 rounded-xl"
                   />
 
                   <Button
-                    type="button"
-                    onClick={() => void sendMessage()}
+                    type="submit"
                     disabled={!text.trim() || sending}
                     className="h-11 rounded-xl px-4"
                   >
@@ -512,7 +560,7 @@ function MessagesPage() {
 
                     <span className="sr-only">Send</span>
                   </Button>
-                </div>
+                </form>
               </div>
             </>
           ) : (

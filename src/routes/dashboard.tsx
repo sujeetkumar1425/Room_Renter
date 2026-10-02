@@ -113,7 +113,7 @@ function DashboardPage() {
             icon={CalendarDays}
             title="My Visits"
             description="Upcoming room visits"
-            href="/visits"
+            href="/bookings"
           />
 
           <DashboardCard

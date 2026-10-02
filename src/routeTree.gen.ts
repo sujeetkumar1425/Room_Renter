@@ -10,7 +10,9 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as BookingsRouteImport } from './routes/bookings'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as EditPropertyRouteImport } from './routes/edit-property'
 import { Route as HowItWorksRouteImport } from './routes/how-it-works'
 import { Route as LandlordRouteImport } from './routes/landlord'
 import { Route as ListPropertyRouteImport } from './routes/list-property'
@@ -27,9 +29,19 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BookingsRoute = BookingsRouteImport.update({
+  id: '/bookings',
+  path: '/bookings',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EditPropertyRoute = EditPropertyRouteImport.update({
+  id: '/edit-property',
+  path: '/edit-property',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HowItWorksRoute = HowItWorksRouteImport.update({
@@ -85,7 +97,9 @@ const PropertyIdRoute = PropertyIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/bookings': typeof BookingsRoute
   '/dashboard': typeof DashboardRoute
+  '/edit-property': typeof EditPropertyRoute
   '/how-it-works': typeof HowItWorksRoute
   '/landlord': typeof LandlordRoute
   '/list-property': typeof ListPropertyRoute
@@ -99,7 +113,9 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/bookings': typeof BookingsRoute
   '/dashboard': typeof DashboardRoute
+  '/edit-property': typeof EditPropertyRoute
   '/how-it-works': typeof HowItWorksRoute
   '/landlord': typeof LandlordRoute
   '/list-property': typeof ListPropertyRoute
@@ -114,7 +130,9 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/bookings': typeof BookingsRoute
   '/dashboard': typeof DashboardRoute
+  '/edit-property': typeof EditPropertyRoute
   '/how-it-works': typeof HowItWorksRoute
   '/landlord': typeof LandlordRoute
   '/list-property': typeof ListPropertyRoute
@@ -130,7 +148,9 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/bookings'
     | '/dashboard'
+    | '/edit-property'
     | '/how-it-works'
     | '/landlord'
     | '/list-property'
@@ -144,7 +164,9 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/bookings'
     | '/dashboard'
+    | '/edit-property'
     | '/how-it-works'
     | '/landlord'
     | '/list-property'
@@ -158,7 +180,9 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/bookings'
     | '/dashboard'
+    | '/edit-property'
     | '/how-it-works'
     | '/landlord'
     | '/list-property'
@@ -173,7 +197,9 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  BookingsRoute: typeof BookingsRoute
   DashboardRoute: typeof DashboardRoute
+  EditPropertyRoute: typeof EditPropertyRoute
   HowItWorksRoute: typeof HowItWorksRoute
   LandlordRoute: typeof LandlordRoute
   ListPropertyRoute: typeof ListPropertyRoute
@@ -195,11 +221,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/bookings': {
+      id: '/bookings'
+      path: '/bookings'
+      fullPath: '/bookings'
+      preLoaderRoute: typeof BookingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/dashboard': {
       id: '/dashboard'
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/edit-property': {
+      id: '/edit-property'
+      path: '/edit-property'
+      fullPath: '/edit-property'
+      preLoaderRoute: typeof EditPropertyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/how-it-works': {
@@ -277,7 +317,9 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  BookingsRoute: BookingsRoute,
   DashboardRoute: DashboardRoute,
+  EditPropertyRoute: EditPropertyRoute,
   HowItWorksRoute: HowItWorksRoute,
   LandlordRoute: LandlordRoute,
   ListPropertyRoute: ListPropertyRoute,

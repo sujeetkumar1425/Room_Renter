@@ -27,6 +27,7 @@ type Conversation = {
 type Profile = {
   id: string;
   full_name: string | null;
+  role: string | null;
 };
 
 type Property = {
@@ -58,7 +59,7 @@ export const Route = createFileRoute("/messages")({
       },
       {
         name: "description",
-        content: "Chat directly with property owners on Room Renter.",
+        content: "Chat directly with property owners and room seekers on Room Renter.",
       },
     ],
   }),
@@ -93,6 +94,11 @@ function MessagesPage() {
 
   const [sending, setSending] = useState(false);
 
+  /*
+   * Property ID from:
+   *
+   * /messages?propertyId=7&landlordId=UUID
+   */
   const directPropertyId = useMemo(() => {
     if (!search.propertyId) {
       return null;
@@ -103,8 +109,16 @@ function MessagesPage() {
     return Number.isFinite(value) ? value : null;
   }, [search.propertyId]);
 
+  /*
+   * Landlord ID from the property details page.
+   */
   const directLandlordId = search.landlordId ?? null;
 
+  /*
+   * Unique conversation key:
+   *
+   * property + other user
+   */
   const directConversationKey = useMemo(() => {
     if (directPropertyId === null || !directLandlordId) {
       return null;
@@ -113,11 +127,18 @@ function MessagesPage() {
     return makeConversationKey(directPropertyId, directLandlordId);
   }, [directPropertyId, directLandlordId]);
 
+  /*
+   * Currently selected conversation.
+   */
   const selectedConversation = useMemo(
     () => conversations.find((conversation) => conversation.key === selectedKey) ?? null,
     [conversations, selectedKey],
   );
 
+  /*
+   * Property and other-user information for
+   * the currently selected conversation.
+   */
   const selectedPropertyId =
     selectedConversation?.property_id ??
     (selectedKey === directConversationKey ? directPropertyId : null);
@@ -127,21 +148,52 @@ function MessagesPage() {
     (selectedKey === directConversationKey ? directLandlordId : null);
 
   /*
-   * Get the user's real name.
+   * Get actual user's name.
    */
-  const getProfileName = useCallback(
+  const getUserName = useCallback(
     (profileId: string | null) => {
       if (!profileId) {
         return "User";
       }
 
-      return profiles[profileId]?.full_name?.trim() || "User";
+      const profile = profiles[profileId];
+
+      return profile?.full_name?.trim() || "User";
     },
     [profiles],
   );
 
   /*
-   * Get the room/property name.
+   * Get actual user's role.
+   */
+  const getUserRole = useCallback(
+    (profileId: string | null) => {
+      if (!profileId) {
+        return "User";
+      }
+
+      const role = profiles[profileId]?.role?.toLowerCase().trim();
+
+      if (role === "landlord" || role === "owner" || role === "property_owner") {
+        return "Property Owner";
+      }
+
+      if (
+        role === "renter" ||
+        role === "room_seeker" ||
+        role === "room seeker" ||
+        role === "tenant"
+      ) {
+        return "Room Seeker";
+      }
+
+      return "User";
+    },
+    [profiles],
+  );
+
+  /*
+   * Get actual room/property name.
    */
   const getPropertyName = useCallback(
     (propertyId: number | null) => {
@@ -154,15 +206,11 @@ function MessagesPage() {
     [properties],
   );
 
-  const getOtherUserName = useCallback(
-    (conversation: Conversation) => {
-      return getProfileName(conversation.other_user_id);
-    },
-    [getProfileName],
-  );
-
   /*
-   * Load conversations.
+   * Load conversations from the existing
+   * public.messages table.
+   *
+   * There is no conversations table.
    */
   const loadConversations = useCallback(async () => {
     setLoadingConversations(true);
@@ -184,7 +232,8 @@ function MessagesPage() {
       setUserId(user.id);
 
       /*
-       * Load all messages involving the current user.
+       * Load all messages involving the
+       * currently logged-in user.
        */
       const { data, error } = await supabase
         .from("messages")
@@ -204,7 +253,10 @@ function MessagesPage() {
       const rows = (data ?? []) as MessageRow[];
 
       /*
-       * Convert messages into conversations.
+       * Group messages into conversations.
+       *
+       * Conversation =
+       * property + other user
        */
       const grouped = new Map<string, Conversation>();
 
@@ -214,8 +266,8 @@ function MessagesPage() {
         const key = makeConversationKey(row.property_id, otherUserId);
 
         /*
-         * Messages are newest first, so the first
-         * message we encounter is the latest one.
+         * Since messages are sorted newest first,
+         * first message is the latest message.
          */
         if (!grouped.has(key)) {
           grouped.set(key, {
@@ -235,16 +287,21 @@ function MessagesPage() {
       setConversations(result);
 
       /*
-       * Load profile names.
+       * ----------------------------------------
+       * LOAD OTHER USERS' PROFILES
+       * ----------------------------------------
        */
       const profileIds = Array.from(
-        new Set(result.map((conversation) => conversation.other_user_id)),
+        new Set([
+          ...result.map((conversation) => conversation.other_user_id),
+          ...(directLandlordId ? [directLandlordId] : []),
+        ]),
       );
 
       if (profileIds.length > 0) {
         const { data: profileData, error: profileError } = await supabase
           .from("profiles")
-          .select("id, full_name")
+          .select("id, full_name, role")
           .in("id", profileIds);
 
         if (profileError) {
@@ -263,7 +320,9 @@ function MessagesPage() {
       }
 
       /*
-       * Load room/property names.
+       * ----------------------------------------
+       * LOAD ROOM / PROPERTY NAMES
+       * ----------------------------------------
        */
       const propertyIds = Array.from(
         new Set(
@@ -274,9 +333,8 @@ function MessagesPage() {
       );
 
       /*
-       * Include the property from the URL too.
-       * This is important when opening a brand-new
-       * conversation from a property page.
+       * Add property from URL if it isn't
+       * already in the conversation list.
        */
       if (directPropertyId !== null && !propertyIds.includes(directPropertyId)) {
         propertyIds.push(directPropertyId);
@@ -304,8 +362,8 @@ function MessagesPage() {
       }
 
       /*
-       * If coming directly from a property page,
-       * automatically select that conversation.
+       * If user arrived from a property page,
+       * open that exact conversation.
        */
       if (directConversationKey) {
         setSelectedKey(directConversationKey);
@@ -321,10 +379,10 @@ function MessagesPage() {
     } finally {
       setLoadingConversations(false);
     }
-  }, [directConversationKey, directPropertyId]);
+  }, [directConversationKey, directLandlordId, directPropertyId]);
 
   /*
-   * Load messages for the selected room.
+   * Load messages for selected conversation.
    */
   const loadMessages = useCallback(
     async (propertyId: number | null, otherUserId: string | null) => {
@@ -351,6 +409,10 @@ function MessagesPage() {
           return;
         }
 
+        /*
+         * Only keep messages between the
+         * two users in this conversation.
+         */
         const conversationMessages = ((data ?? []) as MessageRow[]).filter(
           (message) =>
             (message.sender_id === userId && message.receiver_id === otherUserId) ||
@@ -366,14 +428,14 @@ function MessagesPage() {
   );
 
   /*
-   * Load conversations on page load.
+   * Initial load.
    */
   useEffect(() => {
     void loadConversations();
   }, [loadConversations]);
 
   /*
-   * Load selected conversation messages.
+   * Load selected conversation.
    */
   useEffect(() => {
     if (!selectedOtherUserId || selectedPropertyId === null) {
@@ -385,7 +447,7 @@ function MessagesPage() {
   }, [loadMessages, selectedOtherUserId, selectedPropertyId]);
 
   /*
-   * Realtime messaging.
+   * Realtime messages.
    */
   useEffect(() => {
     if (!userId || !selectedOtherUserId || selectedPropertyId === null) {
@@ -405,6 +467,10 @@ function MessagesPage() {
         (payload) => {
           const newMessage = payload.new as MessageRow;
 
+          /*
+           * Ignore messages belonging to
+           * another user pair on the same room.
+           */
           const belongsToConversation =
             (newMessage.sender_id === userId && newMessage.receiver_id === selectedOtherUserId) ||
             (newMessage.sender_id === selectedOtherUserId && newMessage.receiver_id === userId);
@@ -487,6 +553,9 @@ function MessagesPage() {
     }
   };
 
+  /*
+   * Enter = send message.
+   */
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
@@ -494,25 +563,36 @@ function MessagesPage() {
     }
   };
 
+  /*
+   * Select conversation.
+   */
   const selectConversation = (conversation: Conversation) => {
     setSelectedKey(conversation.key);
   };
 
   /*
-   * Current user's role relative to the conversation.
+   * The name and role of the person we're
+   * actually chatting with.
    */
-  const isCurrentUserRenter = selectedConversation && userId === selectedConversation.other_user_id;
+  const selectedUserName = getUserName(selectedOtherUserId);
+
+  const selectedUserRole = getUserRole(selectedOtherUserId);
+
+  const selectedRoomName = getPropertyName(selectedPropertyId);
 
   return (
     <Page>
       <div className="mx-auto flex h-[calc(100vh-140px)] max-w-7xl overflow-hidden rounded-2xl border bg-background shadow-sm">
-        {/* Conversation list */}
+        {/* =====================================
+            CONVERSATION LIST
+        ====================================== */}
         <aside
           className={`w-full border-r border-border md:w-[340px] ${
             selectedKey ? "hidden md:block" : "block"
           }`}
         >
           <div className="flex h-full flex-col">
+            {/* Header */}
             <div className="border-b px-5 py-4">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
@@ -527,6 +607,7 @@ function MessagesPage() {
               </div>
             </div>
 
+            {/* Conversation items */}
             <div className="flex-1 overflow-y-auto">
               {loadingConversations ? (
                 <div className="flex items-center justify-center p-8">
@@ -549,6 +630,12 @@ function MessagesPage() {
                   {conversations.map((conversation) => {
                     const isSelected = conversation.key === selectedKey;
 
+                    const otherUserName = getUserName(conversation.other_user_id);
+
+                    const otherUserRole = getUserRole(conversation.other_user_id);
+
+                    const roomName = getPropertyName(conversation.property_id);
+
                     return (
                       <button
                         key={conversation.key}
@@ -558,15 +645,19 @@ function MessagesPage() {
                           isSelected ? "bg-primary/5" : ""
                         }`}
                       >
+                        {/* Avatar */}
                         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10">
                           <UserRound className="h-5 w-5 text-primary" />
                         </div>
 
+                        {/* Person + room */}
                         <div className="min-w-0 flex-1">
-                          <p className="font-medium">{getOtherUserName(conversation)}</p>
+                          <p className="truncate font-medium">{otherUserName}</p>
 
                           <p className="truncate text-xs text-muted-foreground">
-                            {getPropertyName(conversation.property_id)}
+                            {otherUserRole}
+                            {" • "}
+                            {roomName}
                           </p>
 
                           <p className="mt-1 truncate text-xs text-muted-foreground">
@@ -582,13 +673,17 @@ function MessagesPage() {
           </div>
         </aside>
 
-        {/* Chat */}
+        {/* =====================================
+            CHAT AREA
+        ====================================== */}
         <section
           className={`flex min-w-0 flex-1 flex-col ${!selectedKey ? "hidden md:flex" : "flex"}`}
         >
           {selectedKey && selectedOtherUserId && selectedPropertyId !== null ? (
             <>
-              {/* Chat header */}
+              {/* =================================
+                  CHAT HEADER
+              ================================== */}
               <header className="flex items-center gap-3 border-b px-4 py-3 sm:px-6">
                 <Button
                   type="button"
@@ -601,28 +696,26 @@ function MessagesPage() {
                   <ArrowLeft className="h-5 w-5" />
                 </Button>
 
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                {/* Avatar */}
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
                   <UserRound className="h-5 w-5 text-primary" />
                 </div>
 
-                <div>
-                  <h2 className="font-semibold">
-                    {selectedConversation
-                      ? getOtherUserName(selectedConversation)
-                      : getProfileName(selectedOtherUserId)}
-                  </h2>
+                {/* Other person's name */}
+                <div className="min-w-0">
+                  <h2 className="truncate font-semibold">{selectedUserName}</h2>
 
-                  <p className="text-xs text-muted-foreground">
-                    {isCurrentUserRenter ? "Property Owner" : "Room Seeker"}
-
+                  <p className="truncate text-xs text-muted-foreground">
+                    {selectedUserRole}
                     {" • "}
-
-                    {getPropertyName(selectedPropertyId)}
+                    {selectedRoomName}
                   </p>
                 </div>
               </header>
 
-              {/* Messages */}
+              {/* =================================
+                  MESSAGES
+              ================================== */}
               <div className="flex-1 overflow-y-auto p-4 sm:p-6">
                 {loadingMessages ? (
                   <div className="flex h-full items-center justify-center">
@@ -637,7 +730,7 @@ function MessagesPage() {
                     <h3 className="font-medium">Start the conversation</h3>
 
                     <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-                      Ask the property owner about rent, availability, facilities, or a visit.
+                      Ask {selectedUserName} about rent, availability, facilities, or a visit.
                     </p>
                   </div>
                 ) : (
@@ -677,7 +770,9 @@ function MessagesPage() {
                 )}
               </div>
 
-              {/* Input */}
+              {/* =================================
+                  MESSAGE INPUT
+              ================================== */}
               <div className="border-t bg-background p-3 sm:p-4">
                 <form
                   onSubmit={(event) => {
@@ -690,7 +785,7 @@ function MessagesPage() {
                     value={text}
                     onChange={(event) => setText(event.target.value)}
                     onKeyDown={handleKeyDown}
-                    placeholder="Type your message..."
+                    placeholder={`Message ${selectedUserName}...`}
                     maxLength={5000}
                     disabled={sending}
                     className="h-11 rounded-xl"
@@ -713,6 +808,7 @@ function MessagesPage() {
               </div>
             </>
           ) : (
+            /* Empty state */
             <div className="flex h-full flex-col items-center justify-center p-8 text-center">
               <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
                 <MessageSquare className="h-7 w-7 text-muted-foreground" />

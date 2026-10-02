@@ -24,6 +24,16 @@ type Conversation = {
   updated_at: string;
 };
 
+type Profile = {
+  id: string;
+  full_name: string | null;
+};
+
+type Property = {
+  id: number;
+  title: string | null;
+};
+
 export const Route = createFileRoute("/messages")({
   validateSearch: (search: Record<string, unknown>) => ({
     propertyId: typeof search.propertyId === "string" ? search.propertyId : undefined,
@@ -64,22 +74,25 @@ function MessagesPage() {
   const search = Route.useSearch();
 
   const [userId, setUserId] = useState<string | null>(null);
+
   const [conversations, setConversations] = useState<Conversation[]>([]);
+
+  const [profiles, setProfiles] = useState<Record<string, Profile>>({});
+
+  const [properties, setProperties] = useState<Record<number, Property>>({});
+
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
+
   const [messages, setMessages] = useState<MessageRow[]>([]);
+
   const [text, setText] = useState("");
+
   const [loadingConversations, setLoadingConversations] = useState(true);
+
   const [loadingMessages, setLoadingMessages] = useState(false);
+
   const [sending, setSending] = useState(false);
 
-  /*
-   * Property page sends:
-   *
-   * /messages?propertyId=7&landlordId=UUID
-   *
-   * This lets us open a new chat even before the first
-   * message has been sent.
-   */
   const directPropertyId = useMemo(() => {
     if (!search.propertyId) {
       return null;
@@ -105,11 +118,6 @@ function MessagesPage() {
     [conversations, selectedKey],
   );
 
-  /*
-   * If the user came directly from a property page,
-   * we can have a selected chat even when there are
-   * no messages yet.
-   */
   const selectedPropertyId =
     selectedConversation?.property_id ??
     (selectedKey === directConversationKey ? directPropertyId : null);
@@ -118,134 +126,254 @@ function MessagesPage() {
     selectedConversation?.other_user_id ??
     (selectedKey === directConversationKey ? directLandlordId : null);
 
+  /*
+   * Get the user's real name.
+   */
+  const getProfileName = useCallback(
+    (profileId: string | null) => {
+      if (!profileId) {
+        return "User";
+      }
+
+      return profiles[profileId]?.full_name?.trim() || "User";
+    },
+    [profiles],
+  );
+
+  /*
+   * Get the room/property name.
+   */
+  const getPropertyName = useCallback(
+    (propertyId: number | null) => {
+      if (propertyId === null) {
+        return "Room";
+      }
+
+      return properties[propertyId]?.title?.trim() || `Room #${propertyId}`;
+    },
+    [properties],
+  );
+
+  const getOtherUserName = useCallback(
+    (conversation: Conversation) => {
+      return getProfileName(conversation.other_user_id);
+    },
+    [getProfileName],
+  );
+
+  /*
+   * Load conversations.
+   */
   const loadConversations = useCallback(async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    setLoadingConversations(true);
 
-    if (!user) {
-      setUserId(null);
-      setConversations([]);
-      setSelectedKey(null);
-      setLoadingConversations(false);
-      return;
-    }
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-    setUserId(user.id);
+      if (!user) {
+        setUserId(null);
+        setConversations([]);
+        setProfiles({});
+        setProperties({});
+        setSelectedKey(null);
+        return;
+      }
 
-    const { data, error } = await supabase
-      .from("messages")
-      .select("id, sender_id, receiver_id, property_id, message, created_at")
-      .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
-      .order("created_at", {
-        ascending: false,
-      });
+      setUserId(user.id);
 
-    if (error) {
-      console.error("Load messages:", error);
-      setConversations([]);
-      setLoadingConversations(false);
-      return;
-    }
+      /*
+       * Load all messages involving the current user.
+       */
+      const { data, error } = await supabase
+        .from("messages")
+        .select("id, sender_id, receiver_id, property_id, message, created_at")
+        .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
+        .order("created_at", {
+          ascending: false,
+        });
 
-    const rows = (data ?? []) as MessageRow[];
+      if (error) {
+        console.error("Load messages:", error);
 
-    const grouped = new Map<string, Conversation>();
+        setConversations([]);
+        return;
+      }
 
-    for (const row of rows) {
-      const otherUserId = row.sender_id === user.id ? row.receiver_id : row.sender_id;
+      const rows = (data ?? []) as MessageRow[];
 
-      const key = makeConversationKey(row.property_id, otherUserId);
+      /*
+       * Convert messages into conversations.
+       */
+      const grouped = new Map<string, Conversation>();
 
-      if (!grouped.has(key)) {
-        grouped.set(key, {
-          key,
-          property_id: row.property_id,
-          other_user_id: otherUserId,
-          last_message: row.message,
-          updated_at: row.created_at,
+      for (const row of rows) {
+        const otherUserId = row.sender_id === user.id ? row.receiver_id : row.sender_id;
+
+        const key = makeConversationKey(row.property_id, otherUserId);
+
+        /*
+         * Messages are newest first, so the first
+         * message we encounter is the latest one.
+         */
+        if (!grouped.has(key)) {
+          grouped.set(key, {
+            key,
+            property_id: row.property_id,
+            other_user_id: otherUserId,
+            last_message: row.message,
+            updated_at: row.created_at,
+          });
+        }
+      }
+
+      const result = Array.from(grouped.values()).sort((a, b) =>
+        b.updated_at.localeCompare(a.updated_at),
+      );
+
+      setConversations(result);
+
+      /*
+       * Load profile names.
+       */
+      const profileIds = Array.from(
+        new Set(result.map((conversation) => conversation.other_user_id)),
+      );
+
+      if (profileIds.length > 0) {
+        const { data: profileData, error: profileError } = await supabase
+          .from("profiles")
+          .select("id, full_name")
+          .in("id", profileIds);
+
+        if (profileError) {
+          console.error("Load profiles:", profileError);
+        } else {
+          const profileMap: Record<string, Profile> = {};
+
+          for (const profile of (profileData ?? []) as Profile[]) {
+            profileMap[profile.id] = profile;
+          }
+
+          setProfiles(profileMap);
+        }
+      } else {
+        setProfiles({});
+      }
+
+      /*
+       * Load room/property names.
+       */
+      const propertyIds = Array.from(
+        new Set(
+          result
+            .map((conversation) => conversation.property_id)
+            .filter((id): id is number => id !== null),
+        ),
+      );
+
+      /*
+       * Include the property from the URL too.
+       * This is important when opening a brand-new
+       * conversation from a property page.
+       */
+      if (directPropertyId !== null && !propertyIds.includes(directPropertyId)) {
+        propertyIds.push(directPropertyId);
+      }
+
+      if (propertyIds.length > 0) {
+        const { data: propertyData, error: propertyError } = await supabase
+          .from("properties")
+          .select("id, title")
+          .in("id", propertyIds);
+
+        if (propertyError) {
+          console.error("Load properties:", propertyError);
+        } else {
+          const propertyMap: Record<number, Property> = {};
+
+          for (const property of (propertyData ?? []) as Property[]) {
+            propertyMap[property.id] = property;
+          }
+
+          setProperties(propertyMap);
+        }
+      } else {
+        setProperties({});
+      }
+
+      /*
+       * If coming directly from a property page,
+       * automatically select that conversation.
+       */
+      if (directConversationKey) {
+        setSelectedKey(directConversationKey);
+      } else {
+        setSelectedKey((current) => {
+          if (current && result.some((conversation) => conversation.key === current)) {
+            return current;
+          }
+
+          return result[0]?.key ?? null;
         });
       }
+    } finally {
+      setLoadingConversations(false);
     }
+  }, [directConversationKey, directPropertyId]);
 
-    const result = Array.from(grouped.values()).sort((a, b) =>
-      b.updated_at.localeCompare(a.updated_at),
-    );
-
-    setConversations(result);
-
-    /*
-     * If opened from a property page, always open
-     * that property/landlord chat.
-     */
-    if (directConversationKey) {
-      setSelectedKey(directConversationKey);
-    } else {
-      setSelectedKey((current) => {
-        if (current && result.some((conversation) => conversation.key === current)) {
-          return current;
-        }
-
-        return result[0]?.key ?? null;
-      });
-    }
-
-    setLoadingConversations(false);
-  }, [directConversationKey]);
-
+  /*
+   * Load messages for the selected room.
+   */
   const loadMessages = useCallback(
     async (propertyId: number | null, otherUserId: string | null) => {
-      if (!userId || !otherUserId) {
+      if (!userId || !otherUserId || propertyId === null) {
         setMessages([]);
         return;
       }
 
       setLoadingMessages(true);
 
-      let query = supabase
-        .from("messages")
-        .select("id, sender_id, receiver_id, property_id, message, created_at")
-        .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`);
+      try {
+        const { data, error } = await supabase
+          .from("messages")
+          .select("id, sender_id, receiver_id, property_id, message, created_at")
+          .eq("property_id", propertyId)
+          .order("created_at", {
+            ascending: true,
+          });
 
-      if (propertyId !== null) {
-        query = query.eq("property_id", propertyId);
-      } else {
-        query = query.is("property_id", null);
-      }
+        if (error) {
+          console.error("Load conversation:", error);
 
-      const { data, error } = await query.order("created_at", {
-        ascending: true,
-      });
+          setMessages([]);
+          return;
+        }
 
-      if (error) {
-        console.error("Load conversation:", error);
-        setMessages([]);
+        const conversationMessages = ((data ?? []) as MessageRow[]).filter(
+          (message) =>
+            (message.sender_id === userId && message.receiver_id === otherUserId) ||
+            (message.sender_id === otherUserId && message.receiver_id === userId),
+        );
+
+        setMessages(conversationMessages);
+      } finally {
         setLoadingMessages(false);
-        return;
       }
-
-      const conversationMessages = ((data ?? []) as MessageRow[]).filter(
-        (message) =>
-          (message.sender_id === userId && message.receiver_id === otherUserId) ||
-          (message.sender_id === otherUserId && message.receiver_id === userId),
-      );
-
-      setMessages(conversationMessages);
-      setLoadingMessages(false);
     },
     [userId],
   );
 
   /*
-   * Load conversations when the page opens or the
-   * property/landlord in the URL changes.
+   * Load conversations on page load.
    */
   useEffect(() => {
     void loadConversations();
   }, [loadConversations]);
 
   /*
-   * Load the selected conversation.
+   * Load selected conversation messages.
    */
   useEffect(() => {
     if (!selectedOtherUserId || selectedPropertyId === null) {
@@ -257,15 +385,15 @@ function MessagesPage() {
   }, [loadMessages, selectedOtherUserId, selectedPropertyId]);
 
   /*
-   * Realtime messages.
+   * Realtime messaging.
    */
   useEffect(() => {
-    if (!userId || selectedPropertyId === null) {
+    if (!userId || !selectedOtherUserId || selectedPropertyId === null) {
       return;
     }
 
     const channel = supabase
-      .channel(`messages-property-${selectedPropertyId}`)
+      .channel(`messages-${selectedPropertyId}-${selectedOtherUserId}`)
       .on(
         "postgres_changes",
         {
@@ -303,6 +431,9 @@ function MessagesPage() {
     };
   }, [loadConversations, selectedOtherUserId, selectedPropertyId, userId]);
 
+  /*
+   * Send message.
+   */
   const sendMessage = async () => {
     const body = text.trim();
 
@@ -317,40 +448,43 @@ function MessagesPage() {
 
     setSending(true);
 
-    const { data, error } = await supabase
-      .from("messages")
-      .insert({
-        sender_id: userId,
-        receiver_id: selectedOtherUserId,
-        property_id: selectedPropertyId,
-        message: body,
-      })
-      .select("id, sender_id, receiver_id, property_id, message, created_at")
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from("messages")
+        .insert({
+          sender_id: userId,
+          receiver_id: selectedOtherUserId,
+          property_id: selectedPropertyId,
+          message: body,
+        })
+        .select("id, sender_id, receiver_id, property_id, message, created_at")
+        .single();
 
-    if (error) {
-      console.error("Send message:", error);
-      alert(error.message);
+      if (error) {
+        console.error("Send message:", error);
+
+        alert(error.message);
+        return;
+      }
+
+      if (data) {
+        const newMessage = data as MessageRow;
+
+        setMessages((current) => {
+          if (current.some((message) => message.id === newMessage.id)) {
+            return current;
+          }
+
+          return [...current, newMessage];
+        });
+      }
+
+      setText("");
+
+      await loadConversations();
+    } finally {
       setSending(false);
-      return;
     }
-
-    if (data) {
-      const newMessage = data as MessageRow;
-
-      setMessages((current) => {
-        if (current.some((message) => message.id === newMessage.id)) {
-          return current;
-        }
-
-        return [...current, newMessage];
-      });
-    }
-
-    setText("");
-    setSending(false);
-
-    await loadConversations();
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
@@ -363,6 +497,11 @@ function MessagesPage() {
   const selectConversation = (conversation: Conversation) => {
     setSelectedKey(conversation.key);
   };
+
+  /*
+   * Current user's role relative to the conversation.
+   */
+  const isCurrentUserRenter = selectedConversation && userId === selectedConversation.other_user_id;
 
   return (
     <Page>
@@ -419,15 +558,15 @@ function MessagesPage() {
                           isSelected ? "bg-primary/5" : ""
                         }`}
                       >
-                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-muted">
-                          <UserRound className="h-5 w-5 text-muted-foreground" />
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                          <UserRound className="h-5 w-5 text-primary" />
                         </div>
 
                         <div className="min-w-0 flex-1">
-                          <p className="font-medium">Property Owner</p>
+                          <p className="font-medium">{getOtherUserName(conversation)}</p>
 
-                          <p className="text-xs text-muted-foreground">
-                            Property #{conversation.property_id ?? "—"}
+                          <p className="truncate text-xs text-muted-foreground">
+                            {getPropertyName(conversation.property_id)}
                           </p>
 
                           <p className="mt-1 truncate text-xs text-muted-foreground">
@@ -467,9 +606,19 @@ function MessagesPage() {
                 </div>
 
                 <div>
-                  <h2 className="font-semibold">Property Owner</h2>
+                  <h2 className="font-semibold">
+                    {selectedConversation
+                      ? getOtherUserName(selectedConversation)
+                      : getProfileName(selectedOtherUserId)}
+                  </h2>
 
-                  <p className="text-xs text-muted-foreground">Property #{selectedPropertyId}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {isCurrentUserRenter ? "Property Owner" : "Room Seeker"}
+
+                    {" • "}
+
+                    {getPropertyName(selectedPropertyId)}
+                  </p>
                 </div>
               </header>
 

@@ -299,10 +299,12 @@ function MessagesPage() {
       );
 
       if (profileIds.length > 0) {
-        const { data: profileData, error: profileError } = await supabase
-          .from("profiles")
-          .select("id, full_name, role")
-          .in("id", profileIds);
+        const { data: profileData, error: profileError } = await supabase.rpc(
+          "get_message_profiles",
+          {
+            p_user_ids: profileIds,
+          },
+        );
 
         if (profileError) {
           console.error("Load profiles:", profileError);

@@ -32,17 +32,11 @@ export const Route = createFileRoute("/messages")({
   }),
 
   beforeLoad: async () => {
-    const { data, error } = await supabase
-      .from("conversations")
-      .select("id, property_id, renter_id, landlord_id, created_at, updated_at")
-      .or(`renter_id.eq.${user.id},landlord_id.eq.${user.id}`)
-      .order("updated_at", { ascending: false });
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
 
-    if (error) {
-      console.error("Conversations:", error);
-    }
-
-    const rows = (data ?? []) as Conversation[];
+    if (!session) throw redirect({ to: "/login" });
   },
 
   head: () => ({

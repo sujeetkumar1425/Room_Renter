@@ -584,7 +584,7 @@ function MessagesPage() {
 
   return (
     <Page>
-      <div className="mx-auto flex h-[calc(100dvh-220px)] max-w-7xl overflow-hidden rounded-2xl border bg-background shadow-sm md:h-[calc(100vh-140px)]">
+      <div className="mx-auto flex h-[calc(100dvh-160px)] max-w-7xl overflow-hidden rounded-2xl border bg-background shadow-sm md:h-[calc(100vh-140px)]">
         {" "}
         {/* =====================================
             CONVERSATION LIST

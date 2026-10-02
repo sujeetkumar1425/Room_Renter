@@ -1,6 +1,7 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { ArrowLeft, Loader2, MessageSquare, Send, UserRound } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+
 import { Page } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,35 +22,32 @@ type MessageRow = {
   sender_id: string;
   body: string;
   created_at: string;
-  read_at?: string | null;
 };
 
 export const Route = createFileRoute("/messages")({
-  validateSearch: (search: Record<string, unknown>) => ({
-    propertyId: typeof search.propertyId === "string" ? search.propertyId : undefined,
-    landlordId: typeof search.landlordId === "string" ? search.landlordId : undefined,
+  validateSearch: (s: Record<string, unknown>) => ({
+    propertyId: typeof s.propertyId === "string" ? s.propertyId : undefined,
+    landlordId: typeof s.landlordId === "string" ? s.landlordId : undefined,
   }),
 
   beforeLoad: async () => {
-    const { data, error } = await supabase
-      .from("conversations")
-      .select("id, property_id, renter_id, landlord_id, created_at, updated_at")
-      .or(`renter_id.eq.${user.id},landlord_id.eq.${user.id}`)
-      .order("updated_at", { ascending: false });
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
 
-    if (error) {
-      console.error("Conversations:", error);
+    if (!session) {
+      throw redirect({ to: "/login" });
     }
-
-    const rows = (data ?? []) as Conversation[];
   },
 
   head: () => ({
     meta: [
-      { title: "Messages — Room Renter" },
+      {
+        title: "Messages — Room Renter",
+      },
       {
         name: "description",
-        content: "Chat directly with property owners on Room Renter.",
+        content: "Chat with room owners on Room Renter.",
       },
     ],
   }),
@@ -65,8 +63,7 @@ function MessagesPage() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [messages, setMessages] = useState<MessageRow[]>([]);
   const [text, setText] = useState("");
-  const [loadingConversations, setLoadingConversations] = useState(true);
-  const [loadingMessages, setLoadingMessages] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
 
   const selectedConversation = useMemo(
@@ -74,104 +71,113 @@ function MessagesPage() {
     [conversations, selectedId],
   );
 
-  const loadConversations = useCallback(async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+  const loadConversations = async () => {
+    setLoading(true);
 
-    if (!user) {
-      setLoadingConversations(false);
-      return;
-    }
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-    setUserId(user.id);
+      if (!user) {
+        setUserId(null);
+        setConversations([]);
+        setSelectedId(null);
+        return;
+      }
 
-    const { data, error } = await supabase
-      .from("conversations")
-      .select("id, property_id, renter_id, landlord_id, created_at, updated_at")
-      .or(`renter_id.eq.${user.id},landlord_id.eq.${user.id}`)
-      .order("updated_at", { ascending: false });
+      setUserId(user.id);
 
-    if (error) {
-      console.error("Conversations:", error);
-    }
+      const { data: conversationData, error: conversationError } = await supabase
+        .from("conversations")
+        .select("id, property_id, renter_id, landlord_id, created_at, updated_at")
+        .or(`renter_id.eq.${user.id},landlord_id.eq.${user.id}`)
+        .order("updated_at", { ascending: false });
 
-    let rows = (data ?? []) as Conversation[];
+      if (conversationError) {
+        console.error("Conversations:", conversationError);
+        setConversations([]);
+        setSelectedId(null);
+        return;
+      }
 
-    /*
-     * Start a direct conversation when the user comes from
-     * a property details page.
-     */
-    if (search.propertyId && search.landlordId && user.id !== search.landlordId) {
-      const propertyId = Number(search.propertyId);
+      let rows = (conversationData ?? []) as Conversation[];
 
-      if (Number.isFinite(propertyId)) {
-        const existing = rows.find(
-          (conversation) =>
-            conversation.property_id === propertyId &&
-            conversation.renter_id === user.id &&
-            conversation.landlord_id === search.landlordId,
-        );
+      /*
+       * Start a new conversation directly from a property page.
+       */
+      if (search.propertyId && search.landlordId && user.id !== search.landlordId) {
+        const propertyId = Number(search.propertyId);
 
-        if (existing) {
-          setSelectedId(existing.id);
-        } else {
-          const { data: created, error: createError } = await supabase
-            .from("conversations")
-            .insert({
-              property_id: propertyId,
-              renter_id: user.id,
-              landlord_id: search.landlordId,
-            })
-            .select("id, property_id, renter_id, landlord_id, created_at, updated_at")
-            .single();
+        if (Number.isFinite(propertyId)) {
+          const existing = rows.find(
+            (conversation) =>
+              conversation.property_id === propertyId &&
+              conversation.renter_id === user.id &&
+              conversation.landlord_id === search.landlordId,
+          );
 
-          if (createError) {
-            console.error("Create conversation:", createError);
-          } else if (created) {
-            const newConversation = created as Conversation;
+          if (existing) {
+            setSelectedId(existing.id);
+          } else {
+            const { data: created, error: createError } = await supabase
+              .from("conversations")
+              .insert({
+                property_id: propertyId,
+                renter_id: user.id,
+                landlord_id: search.landlordId,
+              })
+              .select("id, property_id, renter_id, landlord_id, created_at, updated_at")
+              .single();
 
-            rows = [newConversation, ...rows];
-            setSelectedId(newConversation.id);
+            if (!createError && created) {
+              rows = [created as Conversation, ...rows];
+              setSelectedId(created.id);
+            } else if (createError) {
+              console.error("Create conversation:", createError);
+            }
           }
         }
       }
+
+      setConversations(rows);
+
+      if (rows.length > 0) {
+        setSelectedId((currentSelectedId) => {
+          if (
+            currentSelectedId &&
+            rows.some((conversation) => conversation.id === currentSelectedId)
+          ) {
+            return currentSelectedId;
+          }
+
+          return rows[0].id;
+        });
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadMessages = async (conversationId: number) => {
+    const { data, error } = await supabase
+      .from("messages")
+      .select("id, conversation_id, sender_id, body, created_at")
+      .eq("conversation_id", conversationId)
+      .order("created_at", { ascending: true });
+
+    if (error) {
+      console.error("Messages:", error);
+      setMessages([]);
+      return;
     }
 
-    rows.sort((a, b) => b.updated_at.localeCompare(a.updated_at));
+    setMessages((data ?? []) as MessageRow[]);
 
-    setConversations(rows);
-
-    if (rows.length > 0 && selectedId === null && !search.propertyId) {
-      setSelectedId(rows[0].id);
-    }
-
-    setLoadingConversations(false);
-  }, [search.propertyId, search.landlordId, selectedId]);
-
-  const loadMessages = useCallback(
-    async (conversationId: number) => {
-      if (!userId) {
-        return;
-      }
-
-      setLoadingMessages(true);
-
-      const { data, error } = await supabase
-        .from("messages")
-        .select("id, conversation_id, sender_id, body, created_at, read_at")
-        .eq("conversation_id", conversationId)
-        .order("created_at", { ascending: true });
-
-      if (error) {
-        console.error("Messages:", error);
-        setMessages([]);
-        setLoadingMessages(false);
-        return;
-      }
-
-      setMessages((data ?? []) as MessageRow[]);
-
+    /*
+     * Mark messages from the other person as read.
+     */
+    if (userId) {
       const { error: readError } = await supabase
         .from("messages")
         .update({
@@ -184,26 +190,12 @@ function MessagesPage() {
       if (readError) {
         console.error("Mark messages as read:", readError);
       }
-
-      setMessages((current) =>
-        current.map((message) =>
-          message.sender_id !== userId && !message.read_at
-            ? {
-                ...message,
-                read_at: new Date().toISOString(),
-              }
-            : message,
-        ),
-      );
-
-      setLoadingMessages(false);
-    },
-    [userId],
-  );
+    }
+  };
 
   useEffect(() => {
     void loadConversations();
-  }, [loadConversations]);
+  }, [search.propertyId, search.landlordId]);
 
   useEffect(() => {
     if (!selectedId) {
@@ -212,12 +204,6 @@ function MessagesPage() {
     }
 
     void loadMessages(selectedId);
-  }, [loadMessages, selectedId]);
-
-  useEffect(() => {
-    if (!selectedId) {
-      return;
-    }
 
     const channel = supabase
       .channel(`conversation-${selectedId}`)
@@ -229,28 +215,12 @@ function MessagesPage() {
           table: "messages",
           filter: `conversation_id=eq.${selectedId}`,
         },
-        async (payload) => {
-          const newMessage = payload.new as MessageRow;
+        (payload) => {
+          const message = payload.new as MessageRow;
 
-          setMessages((current) => {
-            if (current.some((message) => message.id === newMessage.id)) {
-              return current;
-            }
-
-            return [...current, newMessage];
-          });
-
-          if (userId && newMessage.sender_id !== userId) {
-            await supabase
-              .from("messages")
-              .update({
-                read_at: new Date().toISOString(),
-              })
-              .eq("id", newMessage.id)
-              .is("read_at", null);
-          }
-
-          await loadConversations();
+          setMessages((current) =>
+            current.some((item) => item.id === message.id) ? current : [...current, message],
+          );
         },
       )
       .subscribe();
@@ -258,7 +228,7 @@ function MessagesPage() {
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [loadConversations, selectedId, userId]);
+  }, [selectedId, userId]);
 
   const sendMessage = async () => {
     const body = text.trim();
@@ -269,224 +239,180 @@ function MessagesPage() {
 
     setSending(true);
 
-    const { data, error } = await supabase
-      .from("messages")
-      .insert({
-        conversation_id: selectedConversation.id,
-        sender_id: userId,
-        body,
-      })
-      .select("id, conversation_id, sender_id, body, created_at, read_at")
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from("messages")
+        .insert({
+          conversation_id: selectedConversation.id,
+          sender_id: userId,
+          body,
+        })
+        .select("id, conversation_id, sender_id, body, created_at")
+        .single();
 
-    if (error) {
-      console.error("Send message:", error);
-      alert(error.message);
+      if (error) {
+        console.error("Send message:", error);
+        alert(error.message);
+        return;
+      }
+
+      if (data) {
+        setMessages((current) =>
+          current.some((item) => item.id === data.id) ? current : [...current, data as MessageRow],
+        );
+
+        setText("");
+
+        setConversations((current) =>
+          current
+            .map((conversation) =>
+              conversation.id === selectedConversation.id
+                ? {
+                    ...conversation,
+                    updated_at: new Date().toISOString(),
+                  }
+                : conversation,
+            )
+            .sort((a, b) => b.updated_at.localeCompare(a.updated_at)),
+        );
+      }
+    } finally {
       setSending(false);
-      return;
     }
-
-    if (data) {
-      setMessages((current) => {
-        if (current.some((message) => message.id === data.id)) {
-          return current;
-        }
-
-        return [...current, data as MessageRow];
-      });
-    }
-
-    /*
-     * Keep the conversation at the top of the list.
-     * If RLS prevents this update, the message itself is still sent.
-     */
-    const { error: updateError } = await supabase
-      .from("conversations")
-      .update({
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", selectedConversation.id);
-
-    if (updateError) {
-      console.error("Update conversation timestamp:", updateError);
-    }
-
-    setText("");
-    setSending(false);
-
-    await loadConversations();
-  };
-
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === "Enter" && !event.shiftKey) {
-      event.preventDefault();
-      void sendMessage();
-    }
-  };
-
-  const getOtherUserId = (conversation: Conversation) => {
-    if (!userId) {
-      return "";
-    }
-
-    return conversation.renter_id === userId ? conversation.landlord_id : conversation.renter_id;
   };
 
   return (
     <Page>
-      <div className="mx-auto flex h-[calc(100vh-140px)] max-w-7xl overflow-hidden rounded-2xl border bg-background shadow-sm">
-        {/* Conversation list */}
-        <aside
-          className={`w-full border-r border-border md:w-[340px] ${
-            selectedId ? "hidden md:block" : "block"
-          }`}
-        >
-          <div className="flex h-full flex-col">
-            <div className="border-b px-5 py-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
-                  <MessageSquare className="h-5 w-5 text-primary" />
-                </div>
+      <div className="container-page py-6 sm:py-10">
+        <div className="mb-5">
+          <h1 className="text-3xl font-bold tracking-tight">Messages</h1>
 
-                <div>
-                  <h1 className="text-lg font-semibold">Messages</h1>
-                  <p className="text-sm text-muted-foreground">Your conversations</p>
-                </div>
-              </div>
-            </div>
+          <p className="mt-1 text-sm text-muted-foreground">Chat directly with property owners.</p>
+        </div>
 
-            <div className="flex-1 overflow-y-auto">
-              {loadingConversations ? (
-                <div className="flex items-center justify-center p-8">
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                </div>
-              ) : conversations.length === 0 ? (
-                <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
-                  <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-muted">
-                    <MessageSquare className="h-6 w-6 text-muted-foreground" />
-                  </div>
+        {loading ? (
+          <div className="card-surface flex items-center justify-center gap-2 p-12 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Loading messages...
+          </div>
+        ) : (
+          <div className="grid min-h-[620px] overflow-hidden rounded-2xl border border-border bg-card md:grid-cols-[280px_1fr]">
+            {/* Conversation list */}
+            <aside className={`border-r border-border ${selectedId ? "hidden md:block" : "block"}`}>
+              <div className="border-b border-border p-4 font-semibold">Conversations</div>
 
-                  <h2 className="font-medium">No conversations yet.</h2>
+              {conversations.length === 0 ? (
+                <div className="p-6 text-center text-sm text-muted-foreground">
+                  <MessageSquare className="mx-auto h-7 w-7" />
 
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Contact a property owner to start a conversation.
-                  </p>
+                  <p className="mt-3">No conversations yet.</p>
                 </div>
               ) : (
-                <div className="divide-y">
-                  {conversations.map((conversation) => {
-                    const isSelected = conversation.id === selectedId;
-                    const otherUserId = getOtherUserId(conversation);
+                <div className="divide-y divide-border">
+                  {conversations.map((conversation) => (
+                    <button
+                      key={conversation.id}
+                      type="button"
+                      onClick={() => setSelectedId(conversation.id)}
+                      className={`w-full p-4 text-left transition-colors ${
+                        selectedId === conversation.id ? "bg-primary/5" : "hover:bg-muted/50"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10">
+                          <UserRound className="h-4 w-4 text-primary" />
+                        </span>
 
-                    return (
-                      <button
-                        key={conversation.id}
-                        type="button"
-                        onClick={() => setSelectedId(conversation.id)}
-                        className={`flex w-full items-center gap-3 px-5 py-4 text-left transition-colors hover:bg-muted/50 ${
-                          isSelected ? "bg-primary/5" : ""
-                        }`}
-                      >
-                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-muted">
-                          <UserRound className="h-5 w-5 text-muted-foreground" />
-                        </div>
-
-                        <div className="min-w-0 flex-1">
-                          <p className="font-medium">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold">
                             {conversation.renter_id === userId ? "Property Owner" : "Room Seeker"}
                           </p>
 
-                          <p className="truncate text-xs text-muted-foreground">
-                            {otherUserId || "Conversation"}
-                          </p>
-
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            {new Date(conversation.updated_at).toLocaleDateString()}
+                          <p className="text-xs text-muted-foreground">
+                            Property #{conversation.property_id ?? "—"}
                           </p>
                         </div>
-                      </button>
-                    );
-                  })}
+                      </div>
+                    </button>
+                  ))}
                 </div>
               )}
-            </div>
-          </div>
-        </aside>
+            </aside>
 
-        {/* Chat */}
-        <section
-          className={`flex min-w-0 flex-1 flex-col ${!selectedId ? "hidden md:flex" : "flex"}`}
-        >
-          {selectedConversation ? (
-            <>
-              {/* Chat header */}
-              <header className="flex items-center gap-3 border-b px-4 py-3 sm:px-6">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="md:hidden"
-                  onClick={() => setSelectedId(null)}
-                  title="Back to conversations"
-                >
-                  <ArrowLeft className="h-5 w-5" />
-                </Button>
+            {/* Chat area */}
+            <section
+              className={`flex min-h-[620px] flex-col ${!selectedId ? "hidden md:flex" : "flex"}`}
+            >
+              {!selectedId ? (
+                <div className="flex flex-1 flex-col items-center justify-center p-8 text-center">
+                  <MessageSquare className="h-10 w-10 text-muted-foreground" />
 
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                  <UserRound className="h-5 w-5 text-primary" />
+                  <h2 className="mt-4 font-semibold">Select a conversation</h2>
+
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Your owner chats will appear here.
+                  </p>
                 </div>
+              ) : (
+                <>
+                  {/* Chat header */}
+                  <div className="flex items-center gap-3 border-b border-border p-4">
+                    <button
+                      type="button"
+                      className="md:hidden"
+                      onClick={() => setSelectedId(null)}
+                      aria-label="Back to conversations"
+                    >
+                      <ArrowLeft className="h-5 w-5" />
+                    </button>
 
-                <div>
-                  <h2 className="font-semibold">
-                    {selectedConversation.renter_id === userId ? "Property Owner" : "Room Seeker"}
-                  </h2>
-
-                  <p className="text-xs text-muted-foreground">Direct conversation</p>
-                </div>
-              </header>
-
-              {/* Messages */}
-              <div className="flex-1 overflow-y-auto p-4 sm:p-6">
-                {loadingMessages ? (
-                  <div className="flex h-full items-center justify-center">
-                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                  </div>
-                ) : messages.length === 0 ? (
-                  <div className="flex h-full flex-col items-center justify-center text-center">
-                    <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-muted">
-                      <MessageSquare className="h-6 w-6 text-muted-foreground" />
+                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10">
+                      <UserRound className="h-4 w-4 text-primary" />
                     </div>
 
-                    <h3 className="font-medium">Start the conversation</h3>
+                    <div>
+                      <p className="font-semibold">
+                        {selectedConversation?.renter_id === userId
+                          ? "Property Owner"
+                          : "Room Seeker"}
+                      </p>
 
-                    <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-                      Send a message to discuss the property, visit timing, rent, or anything else.
-                    </p>
+                      <p className="text-xs text-muted-foreground">
+                        Property #{selectedConversation?.property_id ?? "—"}
+                      </p>
+                    </div>
                   </div>
-                ) : (
-                  <div className="mx-auto flex max-w-3xl flex-col gap-3">
-                    {messages.map((message) => {
-                      const isMine = message.sender_id === userId;
 
-                      return (
+                  {/* Messages */}
+                  <div className="flex-1 space-y-3 overflow-y-auto p-4">
+                    {messages.length === 0 ? (
+                      <div className="flex h-full items-center justify-center text-center">
+                        <div>
+                          <MessageSquare className="mx-auto h-8 w-8 text-muted-foreground" />
+
+                          <p className="mt-3 text-sm text-muted-foreground">
+                            Start the conversation.
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      messages.map((message) => (
                         <div
                           key={message.id}
-                          className={`flex ${isMine ? "justify-end" : "justify-start"}`}
+                          className={`flex ${
+                            message.sender_id === userId ? "justify-end" : "justify-start"
+                          }`}
                         >
                           <div
-                            className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm ${
-                              isMine
+                            className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm ${
+                              message.sender_id === userId
                                 ? "rounded-br-md bg-primary text-primary-foreground"
                                 : "rounded-bl-md bg-muted"
                             }`}
                           >
                             <p className="whitespace-pre-wrap break-words">{message.body}</p>
 
-                            <p
-                              className={`mt-1 text-[10px] ${
-                                isMine ? "text-primary-foreground/70" : "text-muted-foreground"
-                              }`}
-                            >
+                            <p className="mt-1 text-[10px] opacity-70">
                               {new Date(message.created_at).toLocaleTimeString([], {
                                 hour: "2-digit",
                                 minute: "2-digit",
@@ -494,55 +420,46 @@ function MessagesPage() {
                             </p>
                           </div>
                         </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-
-              {/* Message input */}
-              <div className="border-t bg-background p-3 sm:p-4">
-                <div className="mx-auto flex max-w-3xl gap-2">
-                  <Input
-                    value={text}
-                    onChange={(event) => setText(event.target.value)}
-                    onKeyDown={handleKeyDown}
-                    placeholder="Type your message..."
-                    disabled={sending}
-                    className="h-11 rounded-xl"
-                  />
-
-                  <Button
-                    type="button"
-                    onClick={() => void sendMessage()}
-                    disabled={!text.trim() || sending}
-                    className="h-11 rounded-xl px-4"
-                  >
-                    {sending ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Send className="h-4 w-4" />
+                      ))
                     )}
+                  </div>
 
-                    <span className="sr-only">Send</span>
-                  </Button>
-                </div>
-              </div>
-            </>
-          ) : (
-            <div className="flex h-full flex-col items-center justify-center p-8 text-center">
-              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
-                <MessageSquare className="h-7 w-7 text-muted-foreground" />
-              </div>
+                  {/* Message input */}
+                  <div className="border-t border-border p-3">
+                    <form
+                      onSubmit={(event) => {
+                        event.preventDefault();
+                        void sendMessage();
+                      }}
+                      className="flex gap-2"
+                    >
+                      <Input
+                        value={text}
+                        onChange={(event) => setText(event.target.value)}
+                        placeholder="Write a message..."
+                        maxLength={5000}
+                      />
 
-              <h2 className="text-lg font-semibold">Select a conversation</h2>
+                      <Button
+                        type="submit"
+                        disabled={!text.trim() || sending}
+                        className="rounded-xl"
+                      >
+                        {sending ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Send className="h-4 w-4" />
+                        )}
 
-              <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-                Choose a conversation from the left to view your messages.
-              </p>
-            </div>
-          )}
-        </section>
+                        <span className="sr-only">Send</span>
+                      </Button>
+                    </form>
+                  </div>
+                </>
+              )}
+            </section>
+          </div>
+        )}
       </div>
     </Page>
   );

@@ -84,7 +84,16 @@ function PropertyNotFound() {
           The listing may have been rented out or paused by the owner.
         </p>
         <Button asChild className="mt-6 rounded-xl">
-          <Link to="/search">Browse other rooms</Link>
+          <Link
+            to="/search"
+            search={{
+              city: undefined,
+              type: undefined,
+              budget: undefined,
+            }}
+          >
+            Browse other rooms
+          </Link>
         </Button>
       </div>
     </Page>
@@ -192,7 +201,15 @@ function PropertyPage() {
             Home
           </Link>{" "}
           ·{" "}
-          <Link to="/search" className="hover:text-primary">
+          <Link
+            to="/search"
+            search={{
+              city: undefined,
+              type: undefined,
+              budget: undefined,
+            }}
+            className="..."
+          >
             {property.city} rooms
           </Link>{" "}
           · <span className="text-foreground">{property.area}</span>

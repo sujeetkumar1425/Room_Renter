@@ -187,7 +187,7 @@ function DashboardPage() {
 
   return (
     <Page>
-      <div className="container-page py-8 sm:py-12">
+      <div className="container-page px-4 py-6 sm:px-6 sm:py-12">
         {/* ============================================
             HEADER
         ============================================ */}
@@ -196,14 +196,16 @@ function DashboardPage() {
           <div>
             <p className="text-sm font-medium text-primary">Room Seeker</p>
 
-            <h1 className="mt-1 text-3xl font-bold tracking-tight">Welcome, {name} 👋</h1>
+            <h1 className="mt-1 break-words text-2xl font-bold tracking-tight sm:text-3xl">
+              Welcome, {name} 👋
+            </h1>
 
             <p className="mt-2 text-muted-foreground">
               Manage your rooms, bookings and rental activity.
             </p>
           </div>
 
-          <Button asChild className="rounded-xl">
+          <Button asChild className="w-full rounded-xl sm:w-auto">
             <Link
               to="/search"
               search={{
@@ -222,7 +224,7 @@ function DashboardPage() {
             QUICK ACTIONS
         ============================================ */}
 
-        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-6 grid gap-3 sm:mt-8 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
           <DashboardCard
             icon={Heart}
             title="Saved Rooms"
@@ -280,7 +282,7 @@ function DashboardPage() {
               </p>
             </div>
 
-            <Button asChild variant="outline" className="rounded-xl">
+            <Button asChild variant="outline" className="w-full rounded-xl sm:w-auto">
               <Link to="/bookings">
                 View all visits
                 <ArrowRight className="ml-2 h-4 w-4" />
@@ -330,7 +332,7 @@ function DashboardPage() {
                 return (
                   <article
                     key={booking.id}
-                    className="rounded-2xl border border-border bg-card p-5 transition-shadow hover:shadow-sm"
+                    className="rounded-2xl border border-border bg-card p-4 transition-shadow hover:shadow-sm sm:p-5"
                   >
                     <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
                       {/* PROPERTY DETAILS */}
@@ -343,7 +345,7 @@ function DashboardPage() {
 
                           <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-2">
-                              <h3 className="truncate font-semibold">
+                              <h3 className="break-words font-semibold">
                                 {property?.title || `Property #${booking.property_id}`}
                               </h3>
 
@@ -364,7 +366,7 @@ function DashboardPage() {
 
                         {/* DATE + TIME */}
 
-                        <div className="mt-4 flex flex-wrap gap-2">
+                        <div className="mt-4 grid grid-cols-1 gap-2 xs:grid-cols-2 sm:flex sm:flex-wrap">
                           <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1.5 text-sm">
                             <CalendarDays className="h-3.5 w-3.5" />
                             {formatDate(booking.visit_date)}
@@ -456,9 +458,9 @@ function DashboardPage() {
             PROFILE
         ============================================ */}
 
-        <section className="mt-8">
+        <section className="mt-8 pb-4 sm:pb-0">
           <div className="rounded-2xl border border-border bg-card p-6">
-            <div className="flex items-center gap-4">
+            <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground">
                 <User className="h-5 w-5" />
               </div>
@@ -471,7 +473,7 @@ function DashboardPage() {
                 </p>
               </div>
 
-              <Button variant="outline" className="rounded-xl" disabled>
+              <Button variant="outline" className="w-full rounded-xl sm:w-auto" disabled>
                 Profile settings coming soon
               </Button>
             </div>

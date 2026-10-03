@@ -84,16 +84,7 @@ function PropertyNotFound() {
           The listing may have been rented out or paused by the owner.
         </p>
         <Button asChild className="mt-6 rounded-xl">
-          <Link
-            to="/search"
-            search={{
-              city: "Lucknow",
-              type: undefined,
-              budget: undefined,
-            }}
-          >
-            Browse other rooms
-          </Link>
+          <Link to="/search">Browse other rooms</Link>
         </Button>
       </div>
     </Page>
@@ -195,31 +186,27 @@ function PropertyPage() {
 
   return (
     <Page>
-      <div className="container-page py-6">
+      <div className="container-page scroll-pb-32 py-4 sm:py-6">
         <nav className="mb-4 text-sm text-muted-foreground">
           <Link to="/" className="hover:text-primary">
             Home
           </Link>{" "}
           ·{" "}
-          <Link
-            to="/search"
-            search={{ city: "Lucknow", type: undefined, budget: undefined }}
-            className="hover:text-primary"
-          >
-            Lucknow rooms
+          <Link to="/search" className="hover:text-primary">
+            {property.city} rooms
           </Link>{" "}
           · <span className="text-foreground">{property.area}</span>
         </nav>
 
         {/* GALLERY */}
-        <div className="grid gap-3 lg:grid-cols-[2fr_1fr]">
+        <div className="grid gap-2 sm:gap-3 lg:grid-cols-[2fr_1fr]">
           <div className="relative overflow-hidden rounded-2xl">
             <img
               src={property.images[active]}
               alt={property.title}
               width={1200}
               height={800}
-              className="h-[280px] w-full object-cover sm:h-[420px]"
+              className="h-[240px] w-full object-cover sm:h-[420px]"
             />
             <div className="absolute right-3 top-3 flex gap-2">
               <button
@@ -238,7 +225,7 @@ function PropertyPage() {
               </button>
             </div>
           </div>
-          <div className="grid grid-cols-4 gap-3 lg:grid-cols-2">
+          <div className="grid grid-cols-4 gap-2 lg:grid-cols-2">
             {property.images.map((img, i) => (
               <button
                 key={img + i}
@@ -254,14 +241,14 @@ function PropertyPage() {
                   width={1200}
                   height={800}
                   loading="lazy"
-                  className="h-20 w-full object-cover lg:h-[calc((420px-0.75rem)/2)]"
+                  className="h-16 w-full object-cover sm:h-20 lg:h-[calc((420px-0.75rem)/2)]"
                 />
               </button>
             ))}
           </div>
         </div>
 
-        <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_360px]">
+        <div className="mt-6 grid gap-6 sm:mt-8 sm:gap-8 lg:grid-cols-[1fr_360px]">
           <div className="space-y-8">
             <header>
               <div className="flex flex-wrap items-center gap-2">
@@ -274,8 +261,8 @@ function PropertyPage() {
                   {property.available}
                 </span>
               </div>
-              <h1 className="mt-3 text-2xl font-bold sm:text-3xl">{property.title}</h1>
-              <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+              <h1 className="mt-3 break-words text-2xl font-bold sm:text-3xl">{property.title}</h1>
+              <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-muted-foreground">
                 <span className="flex items-center gap-1.5">
                   <Star className="h-4 w-4 fill-warning text-warning" />
                   <span className="font-semibold text-foreground">{property.rating}</span> (
@@ -380,10 +367,12 @@ function PropertyPage() {
                 </div>
                 <div className="space-y-2.5">
                   {breakdown.map((b) => (
-                    <div key={b.label} className="flex items-center gap-3">
-                      <span className="w-32 text-sm text-muted-foreground">{b.label}</span>
+                    <div key={b.label} className="flex items-center gap-2 sm:gap-3">
+                      <span className="w-24 shrink-0 text-xs text-muted-foreground sm:w-32 sm:text-sm">
+                        {b.label}
+                      </span>
                       <Progress value={b.value} className="h-2 flex-1" />
-                      <span className="w-9 text-right text-xs font-medium">
+                      <span className="w-8 shrink-0 text-right text-xs font-medium">
                         {(b.value / 20).toFixed(1)}
                       </span>
                     </div>
@@ -391,7 +380,7 @@ function PropertyPage() {
                 </div>
               </div>
 
-              <div className="mt-4 space-y-3">
+              <div className="mt-4 space-y-3 pb-1">
                 {property.reviewList.map((r) => (
                   <div key={r.name} className="card-surface p-4">
                     <div className="flex items-center gap-3">
@@ -424,7 +413,7 @@ function PropertyPage() {
 
           {/* SIDEBAR */}
           <aside className="space-y-4 lg:sticky lg:top-20 lg:self-start">
-            <div className="card-surface p-5">
+            <div className="card-surface p-4 sm:p-5">
               <p className="text-3xl font-extrabold">
                 {formatINR(property.rent)}
                 <span className="text-base font-medium text-muted-foreground">/month</span>
@@ -457,7 +446,7 @@ function PropertyPage() {
               </p>
             </div>
 
-            <div id="book-visit" className="card-surface p-5">
+            <div id="book-visit" className="scroll-mt-24 card-surface p-4 sm:p-5">
               <div className="flex items-center gap-2">
                 <CalendarCheck className="h-5 w-5 text-primary" />
                 <h3 className="font-bold">Book a room visit</h3>
@@ -515,7 +504,7 @@ function PropertyPage() {
               </Button>
             </div>
 
-            <div className="card-surface border-primary/25 bg-accent/40 p-5">
+            <div className="card-surface border-primary/25 bg-accent/40 p-4 sm:p-5">
               <div className="flex items-center gap-2">
                 <FileSignature className="h-5 w-5 text-primary" />
                 <h3 className="font-bold">Rental Agreement</h3>
@@ -528,7 +517,7 @@ function PropertyPage() {
               </Button>
             </div>
 
-            <div className="card-surface p-5">
+            <div className="card-surface p-4 sm:p-5">
               <div className="flex items-center gap-3">
                 <img
                   src={property.landlord.photo}
@@ -570,8 +559,8 @@ function PropertyPage() {
           </aside>
         </div>
 
-        <section className="mt-12">
-          <h2 className="text-xl font-bold">Similar rooms in Lucknow</h2>
+        <section className="mt-10 sm:mt-12">
+          <h2 className="text-xl font-bold">Similar rooms in {property.city}</h2>
           <div className="mt-4 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {similar.map((p) => (
               <PropertyCard key={p.id} property={p} />
@@ -581,7 +570,7 @@ function PropertyPage() {
       </div>
 
       {/* mobile sticky CTA */}
-      <div className="fixed inset-x-0 bottom-16 z-30 flex gap-2 border-t border-border bg-background/95 p-3 backdrop-blur md:hidden">
+      <div className="fixed inset-x-0 bottom-16 z-30 flex gap-2 border-t border-border bg-background/95 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur md:hidden">
         <Button asChild variant="outline" className="flex-1 rounded-xl">
           <Link
             to="/messages"

@@ -584,7 +584,7 @@ function MessagesPage() {
 
   return (
     <Page>
-      <div className="mx-auto flex h-[calc(100dvh-145px)] max-w-7xl overflow-hidden rounded-2xl border bg-background shadow-sm md:h-[calc(100vh-140px)]">
+      <div className="mx-auto flex h-[calc(100dvh-150px)] max-w-7xl overflow-hidden rounded-2xl border bg-background shadow-sm md:h-[calc(100vh-140px)]">
         {" "}
         {/* =====================================
             CONVERSATION LIST
@@ -596,7 +596,7 @@ function MessagesPage() {
         >
           <div className="flex h-full flex-col">
             {/* Header */}
-            <div className="border-b px-5 py-4">
+            <div className="border-b px-4 py-3 sm:px-5 sm:py-4">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
                   <MessageSquare className="h-5 w-5 text-primary" />
@@ -644,12 +644,12 @@ function MessagesPage() {
                         key={conversation.key}
                         type="button"
                         onClick={() => selectConversation(conversation)}
-                        className={`flex w-full items-center gap-3 px-5 py-4 text-left transition-colors hover:bg-muted/50 ${
+                        className={`flex min-h-16 w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/50 sm:px-5 sm:py-4 ${
                           isSelected ? "bg-primary/5" : ""
                         }`}
                       >
                         {/* Avatar */}
-                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 sm:h-11 sm:w-11">
                           <UserRound className="h-5 w-5 text-primary" />
                         </div>
 
@@ -686,7 +686,7 @@ function MessagesPage() {
               {/* =================================
                   CHAT HEADER
               ================================== */}
-              <header className="flex items-center gap-3 border-b px-4 py-3 sm:px-6">
+              <header className="flex min-h-16 items-center gap-2 border-b px-3 py-2.5 sm:gap-3 sm:px-6 sm:py-3">
                 <Button
                   type="button"
                   variant="ghost"
@@ -699,7 +699,7 @@ function MessagesPage() {
                 </Button>
 
                 {/* Avatar */}
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 sm:h-10 sm:w-10">
                   <UserRound className="h-5 w-5 text-primary" />
                 </div>
 
@@ -718,7 +718,7 @@ function MessagesPage() {
               {/* =================================
                   MESSAGES
               ================================== */}
-              <div className="min-h-0 flex-1 overflow-y-auto p-4 pb-6 sm:p-6">
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3 pb-4 sm:p-6">
                 {" "}
                 {loadingMessages ? (
                   <div className="flex h-full items-center justify-center">
@@ -747,7 +747,7 @@ function MessagesPage() {
                           className={`flex ${isMine ? "justify-end" : "justify-start"}`}
                         >
                           <div
-                            className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm ${
+                            className={`max-w-[88%] rounded-2xl px-3 py-2.5 text-sm sm:max-w-[80%] sm:px-4 sm:py-3 ${
                               isMine
                                 ? "rounded-br-md bg-primary text-primary-foreground"
                                 : "rounded-bl-md bg-muted"
@@ -776,13 +776,13 @@ function MessagesPage() {
               {/* =================================
                   MESSAGE INPUT
               ================================== */}
-              <div className="border-t bg-background p-3 sm:p-4">
+              <div className="border-t bg-background px-3 py-2.5 pb-[calc(0.625rem+env(safe-area-inset-bottom))] sm:p-4">
                 <form
                   onSubmit={(event) => {
                     event.preventDefault();
                     void sendMessage();
                   }}
-                  className="mx-auto flex max-w-3xl gap-2"
+                  className="mx-auto flex w-full max-w-3xl gap-2"
                 >
                   <Input
                     value={text}
@@ -797,7 +797,7 @@ function MessagesPage() {
                   <Button
                     type="submit"
                     disabled={!text.trim() || sending}
-                    className="h-11 rounded-xl px-4"
+                    className="h-11 w-11 shrink-0 rounded-xl px-0 sm:w-auto sm:px-4"
                   >
                     {sending ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -812,7 +812,7 @@ function MessagesPage() {
             </>
           ) : (
             /* Empty state */
-            <div className="flex h-full flex-col items-center justify-center p-8 text-center">
+            <div className="flex h-full flex-col items-center justify-center p-5 text-center sm:p-8">
               <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
                 <MessageSquare className="h-7 w-7 text-muted-foreground" />
               </div>

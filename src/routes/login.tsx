@@ -47,7 +47,7 @@ export function RoleSwitch({
       <button
         type="button"
         onClick={() => onChange("seeker")}
-        className={`rounded-lg px-4 py-2.5 text-sm font-medium transition-all ${
+        className={`min-h-11 rounded-lg px-3 py-2.5 text-center text-sm font-medium transition-all ${
           role === "seeker"
             ? "bg-background text-foreground shadow-sm"
             : "text-muted-foreground hover:text-foreground"
@@ -59,7 +59,7 @@ export function RoleSwitch({
       <button
         type="button"
         onClick={() => onChange("owner")}
-        className={`rounded-lg px-4 py-2.5 text-sm font-medium transition-all ${
+        className={`min-h-11 rounded-lg px-3 py-2.5 text-center text-sm font-medium transition-all ${
           role === "owner"
             ? "bg-background text-foreground shadow-sm"
             : "text-muted-foreground hover:text-foreground"
@@ -413,21 +413,21 @@ function LoginPage() {
 
   return (
     <Page footer={false}>
-      <div className="container-page flex justify-center py-12 sm:py-16">
-        <div className="card-surface w-full max-w-md p-6 sm:p-8">
+      <div className="container-page flex min-h-[calc(100dvh-5rem)] items-start justify-center px-4 py-6 sm:items-center sm:py-12">
+        <div className="card-surface w-full max-w-md p-5 sm:p-8">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Welcome back</h1>
+            <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Welcome back</h1>
 
             <p className="mt-1.5 text-sm text-muted-foreground">
               Log in to continue to Room Renter.
             </p>
           </div>
 
-          <div className="mt-6">
+          <div className="mt-5">
             <RoleSwitch role={role} onChange={setLocalRole} />
           </div>
 
-          <form onSubmit={handleLogin} className="mt-6 space-y-4">
+          <form onSubmit={handleLogin} className="mt-5 space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
 
@@ -438,7 +438,7 @@ function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
                 autoComplete="email"
-                className="rounded-xl"
+                className="h-11 rounded-xl"
               />
             </div>
 
@@ -485,7 +485,7 @@ function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword((value) => !value)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  className="absolute right-1.5 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground"
                   aria-label={showPassword ? "Hide password" : "Show password"}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -496,7 +496,7 @@ function LoginPage() {
             <Button
               type="submit"
               size="lg"
-              className="w-full rounded-xl"
+              className="min-h-11 w-full rounded-xl"
               disabled={loading || googleLoading}
             >
               <ShieldCheck className="h-4 w-4" />
@@ -521,7 +521,7 @@ function LoginPage() {
             type="button"
             variant="outline"
             size="lg"
-            className="w-full rounded-xl"
+            className="min-h-11 w-full rounded-xl"
             onClick={handleGoogleLogin}
             disabled={loading || googleLoading}
           >
@@ -547,7 +547,7 @@ function LoginPage() {
             {googleLoading ? "Connecting to Google..." : "Continue with Google"}
           </Button>
 
-          <div className="mt-6 rounded-xl border border-border bg-muted/30 p-4">
+          <div className="mt-5 rounded-xl border border-border bg-muted/30 p-4 sm:mt-6">
             <div className="flex gap-3">
               <div className="mt-0.5">
                 <ShieldCheck className="h-5 w-5 text-primary" />

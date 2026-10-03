@@ -28,12 +28,11 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       {
-        title: "Room Renter — Find verified rooms & flats in Lucknow",
+        title: "Room Renter — Find verified rooms & flats",
       },
       {
         name: "description",
-        content:
-          "Discover verified rooms, PGs and flats near your college or workplace in Lucknow.",
+        content: "Discover verified rooms, PGs and flats near your college or workplace.",
       },
       {
         property: "og:title",
@@ -41,7 +40,7 @@ export const Route = createFileRoute("/")({
       },
       {
         property: "og:description",
-        content: "Verified rooms, flats and shared spaces in Lucknow.",
+        content: "Verified rooms, flats and shared spaces near you.",
       },
     ],
   }),
@@ -152,14 +151,14 @@ function HomePage() {
       =================================================== */}
 
       <section className="hero-gradient border-b border-border/60">
-        <div className="container-page py-6 sm:py-12 lg:py-16">
+        <div className="container-page px-4 py-6 sm:py-12 lg:py-16">
           <div className="mx-auto max-w-3xl text-center">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-background px-3 py-1.5 text-xs font-semibold text-primary">
+            <span className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-primary/20 bg-background px-3 py-1.5 text-xs font-semibold text-primary">
               <ShieldCheck className="h-3.5 w-3.5" />
-              Live in Lucknow
+              {city ? `Live in ${city}` : "Find a room near you"}
             </span>
 
-            <h1 className="mt-3 text-4xl font-extrabold leading-[1.1] sm:mt-5 sm:text-5xl lg:text-6xl">
+            <h1 className="mt-3 text-3xl font-extrabold leading-[1.1] sm:mt-5 sm:text-5xl lg:text-6xl">
               Find a room that feels like home.
             </h1>
           </div>
@@ -169,7 +168,7 @@ function HomePage() {
           <div className="mt-5 flex flex-col items-center sm:mt-8">
             <Button
               size="lg"
-              className="h-auto rounded-full px-8 py-3 text-base shadow-[var(--shadow-card)] sm:py-4"
+              className="h-auto w-full max-w-xs rounded-full px-6 py-3 text-base shadow-[var(--shadow-card)] sm:w-auto sm:max-w-none sm:py-4"
               onClick={() => setFiltersOpen(true)}
             >
               <SlidersHorizontal className="h-5 w-5" />
@@ -183,7 +182,7 @@ function HomePage() {
             {!city && (
               <button
                 onClick={openLocationModal}
-                className="mt-3 flex items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-sm font-medium text-accent-foreground sm:mt-4"
+                className="mt-3 w-full max-w-sm flex items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-sm font-medium text-accent-foreground sm:mt-4"
               >
                 <Navigation className="h-4 w-4" />
                 Turn on location to see rooms near you
@@ -203,7 +202,7 @@ function HomePage() {
           LISTED ROOMS
       =================================================== */}
 
-      <section className="container-page py-8 sm:py-12">
+      <section className="container-page px-4 py-8 sm:py-12">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h2 className="text-2xl font-bold sm:text-3xl">Listed Rooms</h2>
@@ -214,11 +213,11 @@ function HomePage() {
           </div>
 
           {cityAvailable && (
-            <Button asChild variant="outline" className="rounded-xl">
+            <Button asChild variant="outline" className="w-full rounded-xl sm:w-auto">
               <Link
                 to="/search"
                 search={{
-                  city: "Lucknow",
+                  city: city || undefined,
                   type: undefined,
                   budget: undefined,
                 }}
@@ -255,7 +254,7 @@ function HomePage() {
           ) : city && !cityAvailable ? (
             <ComingSoon city={city} />
           ) : propertiesError ? (
-            <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-6 text-center">
+            <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-5 text-center sm:p-6">
               <p className="font-semibold text-destructive">{propertiesError}</p>
 
               <p className="mt-1 text-sm text-muted-foreground">Please try again later.</p>
@@ -272,7 +271,7 @@ function HomePage() {
               {/* NO PROPERTIES */}
 
               {suggested.length === 0 ? (
-                <div className="rounded-2xl border border-border bg-muted/30 p-10 text-center">
+                <div className="rounded-2xl border border-border bg-muted/30 p-6 text-center sm:p-10">
                   <SearchIcon className="mx-auto h-10 w-10 text-muted-foreground" />
 
                   <h3 className="mt-4 text-lg font-semibold">No properties listed yet</h3>
@@ -282,7 +281,7 @@ function HomePage() {
                     again later.
                   </p>
 
-                  <Button asChild className="mt-5 rounded-xl">
+                  <Button asChild className="mt-5 w-full rounded-xl sm:w-auto">
                     <Link to="/list-property">List Your Property</Link>
                   </Button>
                 </div>
@@ -304,8 +303,8 @@ function HomePage() {
           CITIES
       =================================================== */}
 
-      <section className="border-y border-border bg-surface py-12">
-        <div className="container-page">
+      <section className="border-y border-border bg-surface py-10 sm:py-12">
+        <div className="container-page px-4">
           <h2 className="text-2xl font-bold sm:text-3xl">Cities on Room Renter</h2>
 
           <p className="mt-1.5 text-sm text-muted-foreground">
@@ -364,7 +363,7 @@ function HomePage() {
           HOW ROOM RENTER WORKS
       =================================================== */}
 
-      <section className="container-page py-14">
+      <section className="container-page px-4 py-12 sm:py-14">
         <h2 className="text-center text-2xl font-bold sm:text-3xl">How Room Renter works</h2>
 
         <p className="mx-auto mt-2 max-w-xl text-center text-sm text-muted-foreground">
@@ -394,11 +393,11 @@ function HomePage() {
         </div>
 
         <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-          <Button asChild size="lg" className="rounded-xl">
+          <Button asChild size="lg" className="w-full rounded-xl sm:w-auto">
             <Link
               to="/search"
               search={{
-                city: "Lucknow",
+                city: city || undefined,
                 type: undefined,
                 budget: undefined,
               }}
@@ -407,7 +406,7 @@ function HomePage() {
             </Link>
           </Button>
 
-          <Button asChild size="lg" variant="outline" className="rounded-xl">
+          <Button asChild size="lg" variant="outline" className="w-full rounded-xl sm:w-auto">
             <Link to="/list-property">List Your Property</Link>
           </Button>
         </div>

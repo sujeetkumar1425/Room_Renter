@@ -190,17 +190,19 @@ function LandlordDashboard() {
 
   return (
     <Page>
-      <div className="container-page py-8 sm:py-12">
-        <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+      <div className="container-page pb-24 pt-6 sm:py-12">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm font-medium text-primary">Property Owner</p>
-            <h1 className="mt-1 text-3xl font-bold tracking-tight">Welcome, {name} 👋</h1>
-            <p className="mt-2 text-muted-foreground">
+            <h1 className="mt-1 break-words text-2xl font-bold tracking-tight sm:text-3xl">
+              Welcome, {name} 👋
+            </h1>
+            <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground sm:text-base">
               Manage your properties, enquiries and bookings.
             </p>
           </div>
 
-          <Button asChild className="rounded-xl">
+          <Button asChild className="w-full rounded-xl sm:w-auto">
             <Link to="/list-property">
               <Plus className="mr-2 h-4 w-4" />
               List a Property
@@ -208,7 +210,7 @@ function LandlordDashboard() {
           </Button>
         </div>
 
-        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-6 grid grid-cols-2 gap-3 sm:mt-8 sm:gap-4 lg:grid-cols-4">
           <StatCard
             icon={Building2}
             title="My Properties"
@@ -235,7 +237,7 @@ function LandlordDashboard() {
             </div>
           </div>
 
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 sm:gap-4">
             {properties.length === 0 ? (
               <div className="rounded-2xl border border-border bg-card p-8 text-center sm:col-span-2">
                 <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
@@ -254,10 +256,13 @@ function LandlordDashboard() {
               </div>
             ) : (
               properties.map((property) => (
-                <div key={property.id} className="rounded-2xl border border-border bg-card p-5">
+                <div
+                  key={property.id}
+                  className="rounded-2xl border border-border bg-card p-4 sm:p-5"
+                >
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0">
-                      <h3 className="truncate font-semibold">
+                      <h3 className="break-words font-semibold">
                         {property.title || "Untitled property"}
                       </h3>
                       <p className="mt-1 text-sm text-muted-foreground">{property.city}</p>
@@ -268,7 +273,7 @@ function LandlordDashboard() {
                     <Building2 className="h-5 w-5 shrink-0 text-primary" />
                   </div>
 
-                  <div className="mt-4 flex items-center justify-between border-t border-border pt-4">
+                  <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-4">
                     <span className="font-semibold">
                       ₹{Number(property.rent || 0).toLocaleString("en-IN")}/month
                     </span>
@@ -277,38 +282,47 @@ function LandlordDashboard() {
                     </span>
                   </div>
 
-                  <div className="mt-4 flex items-center justify-end gap-2">
+                  <div className="mt-4 grid grid-cols-3 gap-2">
                     <Button
                       asChild
                       variant="outline"
                       size="icon"
-                      className="h-8 w-8 rounded-lg"
+                      className="h-9 w-full rounded-lg"
                       title="View property"
                     >
                       <Link to="/property/$id" params={{ id: String(property.id) }}>
-                        <Eye className="h-4 w-4" />
+                        <>
+                          <Eye className="h-4 w-4" />
+                          <span className="sr-only">View property</span>
+                        </>
                       </Link>
                     </Button>
                     <Button
                       asChild
                       variant="outline"
                       size="icon"
-                      className="h-8 w-8 rounded-lg"
+                      className="h-9 w-full rounded-lg"
                       title="Edit property"
                     >
                       <Link to="/edit-property" search={{ id: String(property.id) }}>
-                        <Pencil className="h-4 w-4" />
+                        <>
+                          <Pencil className="h-4 w-4" />
+                          <span className="sr-only">Edit property</span>
+                        </>
                       </Link>
                     </Button>
                     <Button
                       variant="outline"
                       size="icon"
-                      className="h-8 w-8 rounded-lg text-destructive hover:text-destructive"
+                      className="h-9 w-full rounded-lg text-destructive hover:text-destructive"
                       title="Delete property"
                       disabled={deletingId === property.id}
                       onClick={() => void deleteProperty(property)}
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <>
+                        <Trash2 className="h-4 w-4" />
+                        <span className="sr-only">Delete property</span>
+                      </>
                     </Button>
                   </div>
                 </div>
@@ -318,14 +332,14 @@ function LandlordDashboard() {
         </section>
 
         <section className="mt-10">
-          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-xl font-bold">Booking Requests</h2>
               <p className="mt-1 text-sm text-muted-foreground">
                 Requests from renters are updated here in real time.
               </p>
             </div>
-            <Button asChild variant="outline" className="mt-3 rounded-xl sm:mt-0">
+            <Button asChild variant="outline" className="w-full rounded-xl sm:mt-0 sm:w-auto">
               <Link to="/bookings">
                 Open bookings
                 <ArrowRight className="ml-2 h-4 w-4" />
@@ -347,10 +361,12 @@ function LandlordDashboard() {
                 {bookings.slice(0, 8).map((booking) => (
                   <div
                     key={booking.id}
-                    className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between"
+                    className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5"
                   >
                     <div className="min-w-0">
-                      <p className="font-semibold">{propertyTitle(booking.property_id)}</p>
+                      <p className="break-words font-semibold">
+                        {propertyTitle(booking.property_id)}
+                      </p>
                       <p className="mt-1 text-sm text-muted-foreground">
                         {formatBookingDate(booking.visit_date)} at{" "}
                         {formatBookingTime(booking.visit_time)}
@@ -363,13 +379,13 @@ function LandlordDashboard() {
                       ) : null}
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
                       <BookingBadge status={booking.status} />
                       {booking.status === "pending" ? (
                         <>
                           <Button
                             size="sm"
-                            className="rounded-lg"
+                            className="min-h-9 flex-1 rounded-lg sm:flex-none"
                             onClick={() => void updateBookingStatus(booking.id, "approved")}
                           >
                             <Check className="mr-1.5 h-4 w-4" />
@@ -378,7 +394,7 @@ function LandlordDashboard() {
                           <Button
                             size="sm"
                             variant="outline"
-                            className="rounded-lg text-destructive hover:text-destructive"
+                            className="min-h-9 flex-1 rounded-lg text-destructive hover:text-destructive sm:flex-none"
                             onClick={() => void updateBookingStatus(booking.id, "rejected")}
                           >
                             <X className="mr-1.5 h-4 w-4" />
@@ -396,7 +412,7 @@ function LandlordDashboard() {
 
         <section className="mt-8">
           <h2 className="text-xl font-bold">Quick Actions</h2>
-          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
             <ActionCard
               icon={Plus}
               title="List a Property"
@@ -464,14 +480,14 @@ function StatCard({
   description: string;
 }) {
   return (
-    <div className="rounded-2xl border border-border bg-card p-5">
+    <div className="rounded-2xl border border-border bg-card p-4 sm:p-5">
       <div className="flex items-center justify-between">
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
           <Icon className="h-5 w-5 text-primary" />
         </div>
         <span className="text-2xl font-bold">{value}</span>
       </div>
-      <h3 className="mt-4 font-semibold">{title}</h3>
+      <h3 className="mt-4 break-words font-semibold">{title}</h3>
       <p className="mt-1 text-sm text-muted-foreground">{description}</p>
     </div>
   );
@@ -491,7 +507,7 @@ function ActionCard({
   return (
     <Link
       to={href}
-      className="group rounded-2xl border border-border bg-card p-5 transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-sm"
+      className="group rounded-2xl border border-border bg-card p-4 transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-sm sm:p-5"
     >
       <div className="flex items-start justify-between">
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
@@ -499,7 +515,7 @@ function ActionCard({
         </div>
         <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-1" />
       </div>
-      <h3 className="mt-4 font-semibold">{title}</h3>
+      <h3 className="mt-4 break-words font-semibold">{title}</h3>
       <p className="mt-1 text-sm text-muted-foreground">{description}</p>
     </Link>
   );

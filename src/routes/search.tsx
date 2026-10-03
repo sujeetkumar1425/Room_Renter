@@ -45,20 +45,20 @@ export const Route = createFileRoute("/search")({
   head: () => ({
     meta: [
       {
-        title: "Search rooms in Lucknow — Room Renter",
+        title: "Find a Room — Room Renter",
       },
       {
         name: "description",
         content:
-          "Browse verified rooms, PGs, studios and flats in Lucknow with live map, price filters and instant owner chat.",
+          "Browse verified rooms, PGs, studios and flats near you with live map, price filters and instant owner chat.",
       },
       {
         property: "og:title",
-        content: "Search rooms in Lucknow — Room Renter",
+        content: "Find a Room — Room Renter",
       },
       {
         property: "og:description",
-        content: "Filter verified rooms in Lucknow by price, type and amenities.",
+        content: "Find verified rooms, PGs, studios and flats near your current location.",
       },
     ],
   }),
@@ -71,10 +71,6 @@ export const Route = createFileRoute("/search")({
 // ============================================================
 
 const amenityFilters = ["Wi-Fi", "AC", "Parking", "Food", "Washing Machine", "Power Backup"];
-
-// Default Lucknow coordinates
-const DEFAULT_LATITUDE = 26.8467;
-const DEFAULT_LONGITUDE = 80.9462;
 
 // ============================================================
 // SEARCH PAGE
@@ -169,7 +165,7 @@ function SearchPage() {
       setLoadError(null);
 
       try {
-        const listed = await fetchListedProperties(activeCity ?? undefined);
+        const listed = await fetchListedProperties(activeCity);
 
         console.log("📍 Properties loaded:", listed);
 
@@ -373,8 +369,8 @@ function SearchPage() {
         }
 
         const map = leaflet.map(mapContainerRef.current!, {
-          center: [DEFAULT_LATITUDE, DEFAULT_LONGITUDE],
-          zoom: 11,
+          center: [0, 0],
+          zoom: 2,
           zoomControl: true,
         });
 
@@ -454,8 +450,6 @@ function SearchPage() {
     // --------------------------------------------------------
 
     if (mappedProperties.length === 0) {
-      map.setView([DEFAULT_LATITUDE, DEFAULT_LONGITUDE], 11);
-
       return;
     }
 
@@ -730,13 +724,13 @@ function SearchPage() {
   // ==========================================================
 
   const MapPanel = (
-    <div className="relative h-[min(68vh,620px)] min-h-[420px] w-full overflow-hidden rounded-2xl border border-border bg-muted lg:h-[calc(100vh-9rem)] lg:min-h-[520px]">
+    <div className="relative h-[calc(100vh-10rem)] min-h-[360px] w-full overflow-hidden rounded-2xl border border-border bg-muted sm:h-[min(68vh,620px)] sm:min-h-[420px] lg:h-[calc(100vh-9rem)] lg:min-h-[520px]">
       {/* REAL LEAFLET MAP */}
       <div ref={mapContainerRef} className="absolute inset-0 z-0" />
 
       {/* MAP HEADER */}
-      <div className="pointer-events-none absolute left-4 top-4 z-[500]">
-        <div className="rounded-full bg-background/95 px-3 py-1.5 text-xs font-semibold shadow-md backdrop-blur">
+      <div className="pointer-events-none absolute left-3 right-3 top-3 z-[500] sm:left-4 sm:right-auto sm:top-4">
+        <div className="w-fit max-w-full truncate rounded-full bg-background/95 px-3 py-1.5 text-xs font-semibold shadow-md backdrop-blur">
           {activeCity ?? "Selected city"} · {results.length} rooms
         </div>
       </div>
@@ -771,7 +765,7 @@ function SearchPage() {
 
       {/* SELECTED PROPERTY CARD */}
       {selectedProperty && (
-        <div className="absolute inset-x-4 bottom-4 z-[600] max-w-sm">
+        <div className="absolute inset-x-3 bottom-3 z-[600] max-w-sm sm:inset-x-4 sm:bottom-4">
           <div className="relative">
             <button
               onClick={() => setSelected(null)}
@@ -828,37 +822,37 @@ function SearchPage() {
 
       <div className="border-b border-border bg-surface">
         <div className="container-page py-4">
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             {/* CITY */}
             <button
               onClick={openLocationModal}
-              className="flex items-center gap-2 rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm font-medium"
+              className="flex min-w-0 w-full items-center justify-center gap-2 rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm font-medium sm:w-auto sm:justify-start"
             >
-              <MapPin className="h-4 w-4 text-primary" />
+              <MapPin className="h-4 w-4 shrink-0 text-primary" />
 
-              {activeCity ?? "Select city"}
+              <span className="truncate">{activeCity ?? "Select city"}</span>
             </button>
 
             {/* SEARCH */}
-            <div className="relative min-w-[200px] flex-1">
+            <div className="relative min-w-0 w-full flex-1">
               <SearchIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
 
               <Input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="Search area, e.g. Gomti Nagar"
-                className="h-11 rounded-xl pl-9"
+                className="h-11 w-full rounded-xl pl-9"
               />
             </div>
 
             {/* MOBILE FILTER BUTTON */}
             <Button
               variant="outline"
-              className="rounded-xl lg:hidden"
+              className="w-full rounded-xl sm:w-auto lg:hidden"
               onClick={() => setShowFilters((value) => !value)}
             >
               <SlidersHorizontal className="h-4 w-4" />
-              Filters
+              {showFilters ? "Hide filters" : "Filters"}
             </Button>
 
             {/* VERIFIED */}
@@ -869,7 +863,11 @@ function SearchPage() {
           </div>
 
           {/* MOBILE FILTERS */}
-          {showFilters && <div className="card-surface mt-3 p-4 lg:hidden">{Filters}</div>}
+          {showFilters && (
+            <div className="card-surface mt-3 max-h-[60vh] overflow-y-auto overscroll-contain p-4 lg:hidden">
+              {Filters}
+            </div>
+          )}
         </div>
       </div>
 
@@ -886,7 +884,7 @@ function SearchPage() {
            MAIN CONTENT
         ==================================================== */
 
-        <div className="container-page grid min-w-0 gap-6 py-6 lg:grid-cols-[240px_minmax(0,1fr)_minmax(360px,460px)]">
+        <div className="container-page grid min-w-0 gap-5 py-4 sm:gap-6 sm:py-6 lg:grid-cols-[240px_minmax(0,1fr)_minmax(360px,460px)]">
           {/* =================================================
               DESKTOP FILTERS
           ================================================== */}
@@ -900,12 +898,14 @@ function SearchPage() {
           ================================================== */}
 
           <section className={cn(mobileView === "map" && "hidden lg:block")}>
-            <div className="flex items-baseline justify-between">
-              <h1 className="text-xl font-bold">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h1 className="min-w-0 text-lg font-bold sm:text-xl">
                 {results.length} rooms in {activeCity ?? "your city"}
               </h1>
 
-              <span className="text-sm text-muted-foreground">Sorted by relevance</span>
+              <span className="hidden shrink-0 text-sm text-muted-foreground sm:inline">
+                Sorted by relevance
+              </span>
             </div>
 
             {/* ERROR */}
@@ -943,7 +943,7 @@ function SearchPage() {
               </div>
             ) : (
               /* PROPERTY CARDS */
-              <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+              <div className="mt-4 grid gap-4 sm:mt-5 sm:gap-5 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
                 {results.map((property) => (
                   <div key={property.id} onClick={() => setSelected(String(property.id))}>
                     <PropertyCard property={property} showDeposit />
@@ -970,7 +970,7 @@ function SearchPage() {
       {available && !isLoading && (
         <button
           onClick={() => setMobileView((value) => (value === "list" ? "map" : "list"))}
-          className="fixed bottom-20 left-1/2 z-[700] flex -translate-x-1/2 items-center gap-2 rounded-full bg-foreground px-5 py-3 text-sm font-semibold text-background shadow-[var(--shadow-float)] lg:hidden"
+          className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] left-1/2 z-[700] flex -translate-x-1/2 items-center gap-2 rounded-full bg-foreground px-4 py-2.5 text-sm font-semibold text-background shadow-[var(--shadow-float)] sm:bottom-20 sm:px-5 sm:py-3 lg:hidden"
         >
           {mobileView === "list" ? <MapIcon className="h-4 w-4" /> : <List className="h-4 w-4" />}
 
@@ -982,7 +982,7 @@ function SearchPage() {
           MOBILE FOOTER
       ====================================================== */}
 
-      <div className="container-page pb-10 text-center text-sm text-muted-foreground lg:hidden">
+      <div className="container-page pb-24 pt-2 text-center text-sm text-muted-foreground lg:hidden">
         <Link to="/" className="text-primary hover:underline">
           Back to home
         </Link>

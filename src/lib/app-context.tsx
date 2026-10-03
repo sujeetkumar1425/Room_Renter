@@ -35,21 +35,72 @@ const CITY_KEY = "rr.city";
 const STATUS_KEY = "rr.status";
 const SAVED_KEY = "rr.saved";
 
+/* ==========================================================
+   REVERSE GEOCODING
+========================================================== */
+
+async function getCityFromCoordinates(latitude: number, longitude: number): Promise<string | null> {
+  try {
+    /*
+     * BigDataCloud provides client-side reverse geocoding
+     * without requiring an API key.
+     */
+    const response = await fetch(
+      `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${encodeURIComponent(
+        latitude,
+      )}&longitude=${encodeURIComponent(longitude)}&localityLanguage=en`,
+    );
+
+    if (!response.ok) {
+      throw new Error(`Reverse geocoding failed: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    /*
+     * Depending on the location, BigDataCloud may provide
+     * city in different fields.
+     */
+    const city = data.city || data.locality || data.principalSubdivision || null;
+
+    if (typeof city !== "string" || !city.trim()) {
+      return null;
+    }
+
+    return city.trim();
+  } catch (error) {
+    console.error("❌ Reverse geocoding failed:", error);
+    return null;
+  }
+}
+
+/* ==========================================================
+   APP PROVIDER
+========================================================== */
+
 export function AppProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+
   const [role, setRole] = useState<UserRole>(null);
+
   const [city, setCityState] = useState<string | null>(null);
+
   const [status, setStatus] = useState<LocationStatus>("unknown");
+
   const [saved, setSaved] = useState<string[]>([]);
+
   const [ready, setReady] = useState(false);
+
   const [showLocationModal, setShowLocationModal] = useState(false);
 
   /* ==========================================================
      RESTORE LOCAL SETTINGS
   ========================================================== */
+
   useEffect(() => {
     try {
       const storedCity = localStorage.getItem(CITY_KEY);
+
       const storedStatus = localStorage.getItem(STATUS_KEY) as LocationStatus | null;
 
       const storedSaved = localStorage.getItem(SAVED_KEY);
@@ -74,6 +125,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
       }
 
+      /*
+       * If there is no previously selected location,
+       * open the existing location modal.
+       */
       if (!storedCity) {
         setShowLocationModal(true);
       }
@@ -85,8 +140,132 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   /* ==========================================================
+     REAL-TIME DEVICE LOCATION
+  ========================================================== */
+
+  useEffect(() => {
+    if (!ready) {
+      return;
+    }
+
+    /*
+     * Browser does not support geolocation.
+     */
+    if (!("geolocation" in navigator)) {
+      console.warn("⚠️ Browser does not support geolocation.");
+
+      setStatus((current) => (current === "manual" ? current : "denied"));
+
+      return;
+    }
+
+    /*
+     * IMPORTANT:
+     *
+     * If the user manually selected a city,
+     * don't immediately replace it with GPS.
+     */
+    const currentStatus = localStorage.getItem(STATUS_KEY) as LocationStatus | null;
+
+    if (currentStatus === "manual") {
+      return;
+    }
+
+    let cancelled = false;
+
+    const handlePosition = async (position: GeolocationPosition) => {
+      if (cancelled) {
+        return;
+      }
+
+      const { latitude, longitude } = position.coords;
+
+      console.log("📍 Current location:", latitude, longitude);
+
+      setStatus("granted");
+
+      try {
+        localStorage.setItem(STATUS_KEY, "granted");
+      } catch {
+        /* storage unavailable */
+      }
+
+      const detectedCity = await getCityFromCoordinates(latitude, longitude);
+
+      if (cancelled || !detectedCity) {
+        return;
+      }
+
+      console.log("📍 Detected city:", detectedCity);
+
+      /*
+       * Update the existing global city state.
+       */
+      setCityState(detectedCity);
+
+      try {
+        localStorage.setItem(CITY_KEY, detectedCity);
+
+        localStorage.setItem(STATUS_KEY, "granted");
+      } catch {
+        /* storage unavailable */
+      }
+
+      /*
+       * Keep location modal closed once
+       * we successfully detected the location.
+       */
+      setShowLocationModal(false);
+    };
+
+    const handleError = (error: GeolocationPositionError) => {
+      if (cancelled) {
+        return;
+      }
+
+      console.warn("⚠️ Geolocation error:", error.message);
+
+      /*
+       * Don't overwrite an existing manual location.
+       */
+      const stored = localStorage.getItem(STATUS_KEY) as LocationStatus | null;
+
+      if (stored === "manual") {
+        return;
+      }
+
+      if (error.code === error.PERMISSION_DENIED) {
+        setStatus("denied");
+
+        try {
+          localStorage.setItem(STATUS_KEY, "denied");
+        } catch {
+          /* storage unavailable */
+        }
+      }
+    };
+
+    /*
+     * watchPosition keeps the location updated while
+     * the user is using the application.
+     */
+    const watchId = navigator.geolocation.watchPosition(handlePosition, handleError, {
+      enableHighAccuracy: true,
+      maximumAge: 60_000,
+      timeout: 15_000,
+    });
+
+    return () => {
+      cancelled = true;
+
+      navigator.geolocation.clearWatch(watchId);
+    };
+  }, [ready]);
+
+  /* ==========================================================
      RESTORE AUTH + ROLE
   ========================================================== */
+
   useEffect(() => {
     let mounted = true;
 
@@ -95,7 +274,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         data: { session },
       } = await supabase.auth.getSession();
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       if (!session?.user) {
         setUser(null);
@@ -111,7 +292,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         .eq("id", session.user.id)
         .maybeSingle();
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       if (profile?.role === "renter" || profile?.role === "landlord") {
         setRole(profile.role);
@@ -120,12 +303,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
     };
 
-    restoreAuth();
+    void restoreAuth();
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       setUser(session?.user ?? null);
 
@@ -143,6 +328,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   /* ==========================================================
      LOAD SAVED ROOMS FROM SUPABASE
   ========================================================== */
+
   useEffect(() => {
     let mounted = true;
 
@@ -151,7 +337,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         data: { user },
       } = await supabase.auth.getUser();
 
-      if (!user || !mounted) return;
+      if (!user || !mounted) {
+        return;
+      }
 
       const { data, error } = await supabase
         .from("saved_properties")
@@ -160,10 +348,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       if (error) {
         console.error("❌ Could not load saved rooms:", error);
+
         return;
       }
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       const ids = (data ?? []).map((row) => String(row.property_id)).filter(Boolean);
 
@@ -176,7 +367,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
     };
 
-    syncSavedRooms();
+    void syncSavedRooms();
 
     return () => {
       mounted = false;
@@ -186,21 +377,37 @@ export function AppProvider({ children }: { children: ReactNode }) {
   /* ==========================================================
      CITY
   ========================================================== */
+
   const setCity = (next: string, nextStatus: LocationStatus = "manual") => {
-    setCityState(next);
+    const normalizedCity = next.trim();
+
+    if (!normalizedCity) {
+      return;
+    }
+
+    setCityState(normalizedCity);
     setStatus(nextStatus);
 
     try {
-      localStorage.setItem(CITY_KEY, next);
+      localStorage.setItem(CITY_KEY, normalizedCity);
+
       localStorage.setItem(STATUS_KEY, nextStatus);
     } catch {
       /* storage unavailable */
+    }
+
+    /*
+     * Manual selection should close the modal.
+     */
+    if (nextStatus === "manual") {
+      setShowLocationModal(false);
     }
   };
 
   /* ==========================================================
      SAVE / UNSAVE ROOM
   ========================================================== */
+
   const toggleSaved = (id: string) => {
     const propertyId = String(id);
 
@@ -234,6 +441,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       if (!Number.isFinite(numericPropertyId)) {
         console.error("❌ Invalid property ID:", propertyId);
+
         return;
       }
 
@@ -249,6 +457,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
           /* Restore UI if database operation failed */
           setSaved(saved);
+
           return;
         }
 
@@ -270,10 +479,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
         /* Restore UI if database operation failed */
         setSaved(saved);
-        return;
       }
     })();
   };
+
+  /* ==========================================================
+     CONTEXT VALUE
+  ========================================================== */
 
   const value = useMemo<AppState>(
     () => ({
@@ -308,6 +520,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
+
+/* ==========================================================
+   HOOK
+========================================================== */
 
 export function useApp() {
   const ctx = useContext(Ctx);

@@ -15,8 +15,7 @@ export const Route = createFileRoute("/signup")({
       { title: "Sign up — Room Renter" },
       {
         name: "description",
-        content:
-          "Create a Room Renter account as a room seeker or list your property as an owner in Lucknow.",
+        content: "Create a Room Renter account as a room seeker or property owner.",
       },
       {
         property: "og:title",
@@ -48,10 +47,7 @@ function SignupPage() {
 
       const googleRole = role === "owner" ? "landlord" : "renter";
 
-      // Tell the callback that this Google authentication
-      // started from SIGNUP, not LOGIN.
       localStorage.setItem("pending_google_role", googleRole);
-
       localStorage.setItem("google_auth_intent", "signup");
 
       const { error } = await supabase.auth.signInWithOAuth({
@@ -66,9 +62,7 @@ function SignupPage() {
 
       if (error) {
         localStorage.removeItem("pending_google_role");
-
         localStorage.removeItem("google_auth_intent");
-
         toast.error(error.message);
         setGoogleLoading(false);
       }
@@ -76,11 +70,9 @@ function SignupPage() {
       console.error(error);
 
       localStorage.removeItem("pending_google_role");
-
       localStorage.removeItem("google_auth_intent");
 
       toast.error("Unable to continue with Google.");
-
       setGoogleLoading(false);
     }
   };
@@ -122,11 +114,9 @@ function SignupPage() {
 
       navigate({
         to: role === "owner" ? "/list-property" : "/search",
-        search: role === "owner" ? undefined : { city: "Lucknow" },
       });
     } catch (error) {
       console.error(error);
-
       toast.error("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
@@ -135,11 +125,11 @@ function SignupPage() {
 
   return (
     <Page footer={false}>
-      <div className="container-page flex justify-center py-12 sm:py-16">
-        <div className="card-surface w-full max-w-md p-6 sm:p-8">
-          <h1 className="text-2xl font-bold">Create your account</h1>
+      <div className="container-page flex min-h-[calc(100dvh-5rem)] items-start justify-center px-4 py-6 sm:items-center sm:py-12">
+        <div className="card-surface w-full max-w-md p-5 sm:p-8">
+          <h1 className="text-xl font-bold sm:text-2xl">Create your account</h1>
 
-          <p className="mt-1.5 text-sm text-muted-foreground">
+          <p className="mt-1.5 text-sm leading-5 text-muted-foreground">
             Room seekers and property owners get their own space.
           </p>
 
@@ -151,88 +141,85 @@ function SignupPage() {
             type="button"
             variant="outline"
             size="lg"
-            className="mt-6 w-full rounded-xl"
+            className="mt-5 min-h-11 w-full rounded-xl"
             onClick={continueWithGoogle}
             disabled={googleLoading || loading}
           >
             <span className="flex h-5 w-5 items-center justify-center font-bold text-base">G</span>
-
             {googleLoading ? "Connecting to Google..." : "Continue with Google"}
           </Button>
 
           <div className="my-5 flex items-center gap-3">
             <div className="h-px flex-1 bg-border" />
-
-            <span className="text-xs text-muted-foreground">OR</span>
-
+            <span className="shrink-0 text-xs text-muted-foreground">OR</span>
             <div className="h-px flex-1 bg-border" />
           </div>
 
-          <form onSubmit={submit} className="mt-6 space-y-4">
+          <form onSubmit={submit} className="space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="name">Full name</Label>
-
               <Input
                 id="name"
                 required
+                autoComplete="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Sujeet Kumar"
-                className="rounded-xl"
+                className="h-11 rounded-xl"
               />
             </div>
 
             <div className="space-y-1.5">
               <Label htmlFor="email">Email</Label>
-
               <Input
                 id="email"
                 type="email"
                 required
+                autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
-                className="rounded-xl"
+                className="h-11 rounded-xl"
               />
             </div>
 
             <div className="space-y-1.5">
               <Label htmlFor="ph">Phone number</Label>
-
               <Input
                 id="ph"
                 type="tel"
                 required
+                autoComplete="tel"
+                inputMode="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="+91 98XXXXXX21"
-                className="rounded-xl"
+                className="h-11 rounded-xl"
               />
             </div>
 
             <div className="space-y-1.5">
               <Label htmlFor="pw">Password</Label>
-
               <Input
                 id="pw"
                 type="password"
                 required
                 minLength={8}
+                autoComplete="new-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Minimum 8 characters"
-                className="rounded-xl"
+                className="h-11 rounded-xl"
               />
             </div>
 
             <Button
               type="submit"
               size="lg"
-              className="w-full rounded-xl"
+              className="min-h-11 w-full rounded-xl"
               disabled={loading || googleLoading}
             >
               <ShieldCheck className="h-4 w-4" />
-
               {loading
                 ? "Creating account..."
                 : role === "owner"

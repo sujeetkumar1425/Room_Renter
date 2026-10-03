@@ -242,8 +242,12 @@ function EditPropertyPage() {
 
   return (
     <Page>
-      <div className="container-page max-w-5xl py-8 sm:py-12">
-        <Button asChild variant="ghost" className="mb-5 rounded-xl">
+      <div className="container-page max-w-5xl overflow-x-hidden pb-28 pt-6 sm:py-12">
+        <Button
+          asChild
+          variant="ghost"
+          className="mb-4 w-full justify-start rounded-xl sm:mb-5 sm:w-auto"
+        >
           <Link to="/landlord">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to landlord dashboard
@@ -252,14 +256,14 @@ function EditPropertyPage() {
 
         <div>
           <p className="text-sm font-medium text-primary">Landlord</p>
-          <h1 className="mt-1 text-3xl font-bold">Edit Property</h1>
-          <p className="mt-2 text-muted-foreground">
+          <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Edit Property</h1>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
             Update your listing details. Changes are saved directly to Supabase.
           </p>
         </div>
 
-        <div className="mt-8 grid gap-6 lg:grid-cols-2">
-          <section className="rounded-2xl border border-border bg-card p-6">
+        <div className="mt-6 grid gap-4 sm:mt-8 sm:gap-6 lg:grid-cols-2">
+          <section className="rounded-2xl border border-border bg-card p-4 sm:p-6">
             <h2 className="text-lg font-bold">Property details</h2>
 
             <div className="mt-5 space-y-4">
@@ -317,7 +321,7 @@ function EditPropertyPage() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field label="Room type">
                   <select
-                    className="h-10 w-full rounded-xl border border-input bg-background px-3 text-sm"
+                    className="h-11 w-full rounded-xl border border-input bg-background px-3 text-sm"
                     value={form.roomType}
                     onChange={(e) => update("roomType", e.target.value)}
                   >
@@ -330,7 +334,7 @@ function EditPropertyPage() {
                 </Field>
                 <Field label="Furnishing">
                   <select
-                    className="h-10 w-full rounded-xl border border-input bg-background px-3 text-sm"
+                    className="h-11 w-full rounded-xl border border-input bg-background px-3 text-sm"
                     value={form.furnished}
                     onChange={(e) => update("furnished", e.target.value)}
                   >
@@ -362,7 +366,7 @@ function EditPropertyPage() {
 
               <Field label="Preferred gender">
                 <select
-                  className="h-10 w-full rounded-xl border border-input bg-background px-3 text-sm"
+                  className="h-11 w-full rounded-xl border border-input bg-background px-3 text-sm"
                   value={form.gender}
                   onChange={(e) => update("gender", e.target.value)}
                 >
@@ -387,7 +391,7 @@ function EditPropertyPage() {
             </div>
           </section>
 
-          <section className="rounded-2xl border border-border bg-card p-6">
+          <section className="rounded-2xl border border-border bg-card p-4 sm:p-6">
             <h2 className="text-lg font-bold">Amenities & location</h2>
 
             <div className="mt-5">
@@ -398,7 +402,7 @@ function EditPropertyPage() {
                   return (
                     <label
                       key={amenity}
-                      className="flex cursor-pointer items-center gap-2 rounded-xl border border-border p-3 text-sm"
+                      className="flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border border-border p-3 text-sm leading-5"
                     >
                       <Checkbox
                         checked={checked}
@@ -418,7 +422,7 @@ function EditPropertyPage() {
               </div>
             </div>
 
-            <div className="mt-6 grid gap-4 sm:grid-cols-2">
+            <div className="mt-5 grid gap-4 sm:mt-6 sm:grid-cols-2">
               <Field label="Latitude">
                 <Input
                   type="number"
@@ -443,11 +447,11 @@ function EditPropertyPage() {
                   latitude={latitude}
                   longitude={longitude}
                   title={form.title || "Property location"}
-                  height="320px"
+                  height="280px"
                 />
               </div>
             ) : (
-              <div className="mt-4 rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+              <div className="mt-4 rounded-xl border border-dashed border-border p-4 text-center text-sm leading-6 text-muted-foreground sm:p-6">
                 Enter valid coordinates to preview the map.
               </div>
             )}

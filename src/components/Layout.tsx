@@ -417,6 +417,12 @@ export function Header() {
 
             <SheetContent side="right" className="w-72 p-6">
               <div className="mt-6 flex flex-col gap-1">
+                {/* LOCATION */}
+
+                <div className="mb-2">
+                  <CityPill />
+                </div>
+
                 {/* NAVIGATION */}
 
                 {navLinks.map((link) => {
@@ -566,17 +572,21 @@ export function BottomNav() {
   const pathname = useRouterState({
     select: (s) => s.location.pathname,
   });
+  const { role } = useApp();
+
+  const profileRoute = role === "landlord" ? "/landlord" : "/dashboard";
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur-md md:hidden">
       <div className="flex items-stretch justify-around px-1 pb-[env(safe-area-inset-bottom)]">
         {bottomNav.map((item) => {
-          const active = item.to === "/" ? pathname === "/" : pathname.startsWith(item.to);
+          const target = item.label === "Profile" ? profileRoute : item.to;
+          const active = target === "/" ? pathname === "/" : pathname.startsWith(target);
 
           return (
             <Link
               key={item.to}
-              to={item.to}
+              to={target}
               className={cn(
                 "flex flex-1 flex-col items-center gap-1 py-2.5 text-[11px] font-medium transition-colors",
                 active ? "text-primary" : "text-muted-foreground",
@@ -598,7 +608,7 @@ export function BottomNav() {
 ========================================================= */
 
 export function Footer() {
-  const { role } = useApp();
+  const { role, city } = useApp();
   return (
     <footer className="mt-16 border-t border-border bg-surface">
       <div className="container-page grid gap-8 py-12 sm:grid-cols-2 lg:grid-cols-4">
@@ -608,7 +618,7 @@ export function Footer() {
           <Logo />
 
           <p className="mt-3 max-w-xs text-sm text-muted-foreground">
-            Verified rooms, flats and shared spaces — starting with Lucknow.
+            Verified rooms, flats and shared spaces — built for renters and property owners.
           </p>
         </div>
 
@@ -665,11 +675,11 @@ export function Footer() {
 
           <p className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
             <Building2 className="h-4 w-4 text-primary" />
-            Lucknow, Uttar Pradesh
+            {city ? `${city}, India` : "Choose your city"}
           </p>
 
           <p className="mt-2 text-xs text-muted-foreground">
-            Delhi, Noida, Gurgaon, Bengaluru, Mumbai, Pune and Hyderabad — coming soon.
+            Room availability and property listings depend on the selected location.
           </p>
         </div>
       </div>

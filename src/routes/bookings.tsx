@@ -149,24 +149,24 @@ function BookingsPage() {
 
   return (
     <Page>
-      <div className="container-page py-8 sm:py-12">
+      <div className="container-page overflow-x-hidden pb-28 pt-6 sm:py-12">
         <p className="text-sm font-medium text-primary">
           {role === "landlord" ? "Landlord" : "Room Seeker"}
         </p>
-        <h1 className="mt-1 text-3xl font-bold">Bookings & Visits</h1>
-        <p className="mt-2 text-muted-foreground">
+        <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Bookings & Visits</h1>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
           {role === "landlord"
             ? "Review renter visit requests and approve or reject them."
             : "Track your room visit requests and their current status."}
         </p>
 
-        <div className="mt-8 space-y-4">
+        <div className="mt-6 space-y-4 sm:mt-8">
           {loading ? (
-            <div className="rounded-2xl border border-border bg-card p-10 text-center text-sm text-muted-foreground">
+            <div className="rounded-2xl border border-border bg-card p-6 text-center text-sm text-muted-foreground sm:p-10">
               Loading bookings...
             </div>
           ) : bookings.length === 0 ? (
-            <div className="rounded-2xl border border-border bg-card p-10 text-center">
+            <div className="rounded-2xl border border-border bg-card p-6 text-center sm:p-10">
               <CalendarDays className="mx-auto h-10 w-10 text-primary" />
               <h2 className="mt-4 font-semibold">No bookings yet</h2>
               <p className="mt-1 text-sm text-muted-foreground">
@@ -175,7 +175,7 @@ function BookingsPage() {
                   : "Open a property and schedule a visit to create your first booking."}
               </p>
               {role === "renter" ? (
-                <Button asChild className="mt-5 rounded-xl">
+                <Button asChild className="mt-5 w-full rounded-xl sm:w-auto">
                   <Link
                     to="/search"
                     search={{ city: undefined, type: undefined, budget: undefined }}
@@ -189,12 +189,15 @@ function BookingsPage() {
             bookings.map((booking) => {
               const property = propertyMap.get(booking.property_id);
               return (
-                <article key={booking.id} className="rounded-2xl border border-border bg-card p-5">
-                  <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+                <article
+                  key={booking.id}
+                  className="rounded-2xl border border-border bg-card p-4 sm:p-5"
+                >
+                  <div className="flex flex-col gap-4 sm:gap-5 lg:flex-row lg:items-center lg:justify-between">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
                         <Home className="h-5 w-5 shrink-0 text-primary" />
-                        <h2 className="truncate font-semibold">
+                        <h2 className="min-w-0 break-words font-semibold">
                           {property?.title || `Property #${booking.property_id}`}
                         </h2>
                       </div>
@@ -227,7 +230,7 @@ function BookingsPage() {
                       ) : null}
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex w-full flex-wrap items-center gap-2 lg:w-auto lg:justify-end">
                       <StatusBadge status={booking.status} />
 
                       {role === "landlord" && booking.status === "pending" ? (

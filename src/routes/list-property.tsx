@@ -537,14 +537,14 @@ function ListPropertyPage() {
 
   return (
     <Page>
-      <div className="container-page py-8 sm:py-12">
+      <div className="container-page overflow-x-hidden pb-28 pt-6 sm:py-12">
         <LandlordVerificationCard />
 
         {/* HEADER */}
 
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-3xl font-bold">List your property</h1>
+            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">List your property</h1>
 
             <p className="mt-1.5 text-sm text-muted-foreground">
               Owners can add rooms in {ACTIVE_CITY} — other cities open soon.
@@ -552,7 +552,7 @@ function ListPropertyPage() {
           </div>
 
           {role !== "landlord" && (
-            <Button asChild variant="outline" className="rounded-xl">
+            <Button asChild variant="outline" className="w-full rounded-xl sm:w-auto">
               <Link to="/login">Log in as landlord</Link>
             </Button>
           )}
@@ -560,13 +560,13 @@ function ListPropertyPage() {
 
         {/* STEPPER */}
 
-        <div className="no-scrollbar mt-6 flex gap-2 overflow-x-auto pb-1">
+        <div className="no-scrollbar -mx-1 mt-6 flex gap-2 overflow-x-auto px-1 pb-2">
           {steps.map((s, i) => (
             <button
               key={s.label}
               onClick={() => setStep(i)}
               className={cn(
-                "flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-colors",
+                "flex min-h-10 shrink-0 items-center gap-2 rounded-full border px-3.5 py-2 text-sm font-medium transition-colors",
 
                 i === step
                   ? "border-primary bg-accent text-primary"
@@ -584,7 +584,7 @@ function ListPropertyPage() {
 
         {/* MAIN CARD */}
 
-        <div className="card-surface mt-6 p-5 sm:p-7">
+        <div className="card-surface mt-5 p-4 sm:mt-6 sm:p-7">
           {/* ==================================================
               STEP 0 — LOCATION
               ================================================== */}
@@ -638,7 +638,7 @@ function ListPropertyPage() {
 
               <div className="sm:col-span-2">
                 <Field label="Search exact location">
-                  <div className="flex gap-2">
+                  <div className="flex flex-col gap-2 sm:flex-row">
                     <Input
                       value={locationSearch}
                       onChange={(e) => setLocationSearch(e.target.value)}
@@ -656,7 +656,7 @@ function ListPropertyPage() {
                       type="button"
                       onClick={searchLocation}
                       disabled={locationLoading}
-                      className="shrink-0 rounded-xl"
+                      className="w-full shrink-0 rounded-xl sm:w-auto"
                     >
                       {locationLoading ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
@@ -844,7 +844,7 @@ function ListPropertyPage() {
               ================================================== */}
 
           {step === 2 && (
-            <div className="flex flex-wrap gap-2">
+            <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
               {amenities.map((a) => {
                 const name =
                   typeof a === "string"
@@ -858,7 +858,7 @@ function ListPropertyPage() {
                 return (
                   <label
                     key={name}
-                    className="flex cursor-pointer items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm"
+                    className="flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm leading-5"
                   >
                     <Checkbox
                       checked={picked.includes(name)}
@@ -890,21 +890,21 @@ function ListPropertyPage() {
               <button
                 type="button"
                 onClick={addPhoto}
-                className="flex w-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border bg-muted/40 py-10 text-sm text-muted-foreground transition-colors hover:bg-muted"
+                className="flex min-h-32 w-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border bg-muted/40 px-4 py-8 text-center text-sm leading-5 text-muted-foreground transition-colors hover:bg-muted sm:py-10"
               >
                 <Upload className="h-5 w-5 text-primary" />
                 Upload room photos — first photo becomes the cover
               </button>
 
               {photos.length > 0 && (
-                <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
                   {photos.map((photo, i) => (
                     <div key={photo.preview} className="card-surface overflow-hidden p-3 text-sm">
                       <div className="relative">
                         <img
                           src={photo.preview}
                           alt={`Property photo ${i + 1}`}
-                          className="h-40 w-full rounded-xl object-cover"
+                          className="aspect-[4/3] h-auto w-full rounded-xl object-cover sm:aspect-auto sm:h-40"
                         />
 
                         {i === 0 && (
@@ -991,7 +991,9 @@ function ListPropertyPage() {
                 Listing preview
               </div>
 
-              <h2 className="mt-2 text-2xl font-bold">{form.title || "Untitled room"}</h2>
+              <h2 className="mt-2 break-words text-xl font-bold sm:text-2xl">
+                {form.title || "Untitled room"}
+              </h2>
 
               <p className="text-sm text-muted-foreground">
                 {[form.locality, form.city].filter(Boolean).join(", ")}
@@ -1004,7 +1006,7 @@ function ListPropertyPage() {
                 </div>
               )}
 
-              <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
                 <Stat label="Rent" value={form.rent ? `${formatINR(Number(form.rent))}/mo` : "—"} />
 
                 <Stat
@@ -1021,7 +1023,7 @@ function ListPropertyPage() {
                 <Stat label="Gender" value={form.gender} />
               </div>
 
-              <p className="mt-4 text-sm text-muted-foreground">
+              <p className="mt-4 break-words text-sm leading-6 text-muted-foreground">
                 {form.description || "No description added yet."}
               </p>
 
@@ -1045,7 +1047,7 @@ function ListPropertyPage() {
           <div className="mt-7 flex items-center justify-between gap-3 border-t border-border pt-5">
             <Button
               variant="outline"
-              className="rounded-xl"
+              className="w-full rounded-xl sm:w-auto"
               disabled={step === 0}
               onClick={() => setStep((s) => Math.max(0, s - 1))}
             >
@@ -1053,7 +1055,7 @@ function ListPropertyPage() {
             </Button>
 
             {step < steps.length - 1 ? (
-              <Button className="rounded-xl" onClick={() => setStep((s) => s + 1)}>
+              <Button className="w-full rounded-xl sm:w-auto" onClick={() => setStep((s) => s + 1)}>
                 Continue
               </Button>
             ) : (
@@ -1122,11 +1124,10 @@ function PropertyLocationMap({
   const initializedRef = useRef(false);
 
   /*
-   * Default center = Lucknow
+   * No hardcoded city is used for the initial map center.
+   * If no property location has been selected yet, use the
+   * browser's current location when permission is available.
    */
-
-  const DEFAULT_LATITUDE = 26.8467;
-  const DEFAULT_LONGITUDE = 80.9462;
 
   /*
    * Initialize Leaflet ONLY in browser.
@@ -1162,17 +1163,44 @@ function PropertyLocationMap({
 
       initializedRef.current = true;
 
-      const initialLatitude = latitude ?? DEFAULT_LATITUDE;
+      const initialLatitude = latitude;
+      const initialLongitude = longitude;
 
-      const initialLongitude = longitude ?? DEFAULT_LONGITUDE;
+      // Use the browser's real current location when no property
+      // location has been selected yet. This avoids a fake/default
+      // city such as Lucknow.
+      let currentLatitude: number | null = initialLatitude;
+      let currentLongitude: number | null = initialLongitude;
+
+      if (currentLatitude === null || currentLongitude === null) {
+        if (typeof navigator !== "undefined" && navigator.geolocation) {
+          try {
+            const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+              navigator.geolocation.getCurrentPosition(resolve, reject, {
+                enableHighAccuracy: true,
+                maximumAge: 60_000,
+                timeout: 10_000,
+              });
+            });
+
+            currentLatitude = position.coords.latitude;
+            currentLongitude = position.coords.longitude;
+          } catch {
+            // Location permission may be denied. The user can still
+            // search for an address or click the map manually.
+          }
+        }
+      }
 
       /*
        * Create map
        */
 
+      const hasInitialLocation = currentLatitude !== null && currentLongitude !== null;
+
       const map = L.map(mapContainerRef.current).setView(
-        [initialLatitude, initialLongitude],
-        latitude !== null && longitude !== null ? 17 : 12,
+        hasInitialLocation ? [currentLatitude!, currentLongitude!] : [20.5937, 78.9629],
+        hasInitialLocation ? 17 : 5,
       );
 
       mapRef.current = map;
@@ -1268,8 +1296,14 @@ function PropertyLocationMap({
        * Existing selected location
        */
 
-      if (latitude !== null && longitude !== null) {
-        createMarker(latitude, longitude);
+      if (hasInitialLocation) {
+        createMarker(currentLatitude!, currentLongitude!);
+
+        // Keep the selected coordinates in React state so the
+        // publish step saves the same real location.
+        if (latitude === null || longitude === null) {
+          onLocationChange(currentLatitude!, currentLongitude!);
+        }
       }
 
       /*
@@ -1404,9 +1438,9 @@ function PropertyLocationMap({
 
   return (
     <div className="overflow-hidden rounded-2xl border border-border">
-      <div ref={mapContainerRef} className="h-[380px] w-full" />
+      <div ref={mapContainerRef} className="h-[300px] w-full sm:h-[380px]" />
 
-      <div className="flex items-center gap-2 border-t border-border bg-muted/40 px-4 py-3 text-xs text-muted-foreground">
+      <div className="flex items-start gap-2 border-t border-border bg-muted/40 px-3 py-3 text-xs leading-5 text-muted-foreground sm:px-4">
         <MapPin className="h-4 w-4 text-primary" />
         Click on the map to place the pin, or drag the existing pin to the exact property location.
       </div>

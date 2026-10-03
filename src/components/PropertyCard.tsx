@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { Heart, MapPin, Star, BadgeCheck } from "lucide-react";
-import type { Property } from "@/lib/data";
+import type { Property } from "@/lib/properties";
 import { formatINR } from "@/lib/data";
 import { useApp } from "@/lib/app-context";
 import { cn } from "@/lib/utils";

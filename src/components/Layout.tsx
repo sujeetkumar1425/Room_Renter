@@ -79,6 +79,10 @@ type NavigationItem = {
   };
 };
 
+/* =========================================================
+   DASHBOARD SIDEBAR
+========================================================= */
+
 function DashboardSidebar({
   isLandlord,
   displayName,
@@ -118,10 +122,13 @@ function DashboardSidebar({
       to: "/messages",
       label: "Messages",
       icon: MessageSquare,
-      search: { propertyId: undefined, landlordId: undefined },
+      search: {
+        propertyId: undefined,
+        landlordId: undefined,
+      },
     },
     {
-      to: isLandlord ? "/landlord-profile" : "/dashboard",
+      to: isLandlord ? "/landlord-profile" : "/profile",
       label: "Profile",
       icon: UserIcon,
     },
@@ -151,8 +158,10 @@ function DashboardSidebar({
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground">
             <UserIcon className="h-5 w-5" />
           </span>
+
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold">{displayName}</p>
+
             <p className="truncate text-xs text-muted-foreground">
               {isLandlord ? "Property Owner" : "Room Seeker"}
             </p>
@@ -178,7 +187,9 @@ function DashboardSidebar({
                     ? "bg-primary text-primary-foreground shadow-sm"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground",
                 )}
-                activeOptions={{ exact: item.label === "Dashboard" || item.label === "Profile" }}
+                activeOptions={{
+                  exact: item.label === "Dashboard" || item.label === "Profile",
+                }}
                 aria-current={active ? "page" : undefined}
               >
                 <item.icon className="h-[18px] w-[18px]" />
@@ -192,6 +203,7 @@ function DashboardSidebar({
           {userEmail ? (
             <p className="truncate px-3 text-xs text-muted-foreground">{userEmail}</p>
           ) : null}
+
           <button
             type="button"
             onClick={() => {
@@ -208,10 +220,6 @@ function DashboardSidebar({
     </>
   );
 }
-
-/* =========================================================
-   NOTIFICATIONS
-========================================================= */
 
 /* =========================================================
    CITY PILL
@@ -283,7 +291,11 @@ export function Header() {
       setAuthLoading(false);
     };
 
-    loadUser();
+    void loadUser();
+
+    /* -----------------------------------------------------
+       LOAD UNREAD NOTIFICATION COUNT
+    ----------------------------------------------------- */
 
     const loadNotificationCount = async () => {
       const {
@@ -291,17 +303,25 @@ export function Header() {
       } = await supabase.auth.getUser();
 
       if (!currentUser || !mounted) {
-        if (mounted) setNotificationCount(0);
+        if (mounted) {
+          setNotificationCount(0);
+        }
+
         return;
       }
 
       const { count } = await supabase
         .from("notifications")
-        .select("id", { count: "exact", head: true })
+        .select("id", {
+          count: "exact",
+          head: true,
+        })
         .eq("user_id", currentUser.id)
-        .is("read_at", null);
+        .eq("is_read", false);
 
-      if (mounted) setNotificationCount(count ?? 0);
+      if (mounted) {
+        setNotificationCount(count ?? 0);
+      }
     };
 
     void loadNotificationCount();
@@ -329,8 +349,11 @@ export function Header() {
         if (mounted) {
           setProfile(profileData ?? null);
         }
+
+        void loadNotificationCount();
       } else {
         setProfile(null);
+        setNotificationCount(0);
       }
 
       setAuthLoading(false);
@@ -349,7 +372,6 @@ export function Header() {
   const handleLogout = async () => {
     await supabase.auth.signOut();
 
-    // Return to home after logout
     window.location.href = "/";
   };
 
@@ -367,11 +389,12 @@ export function Header() {
   const isLandlord = profile?.role === "landlord";
 
   /* -------------------------------------------------------
-     DASHBOARD ROUTE
+     ROUTES
   ------------------------------------------------------- */
 
   const dashboardRoute = isLandlord ? "/landlord" : "/dashboard";
-  const profileRoute = isLandlord ? "/landlord-profile" : "/dashboard";
+
+  const profileRoute = isLandlord ? "/landlord-profile" : "/profile";
 
   const dashboardLabel = isLandlord ? "Landlord Dashboard" : "My Dashboard";
 
@@ -391,8 +414,8 @@ export function Header() {
       <header className="sticky top-0 z-40 border-b border-border/70 bg-background/85 backdrop-blur-md">
         <div className="container-page flex h-16 items-center justify-between gap-4">
           {/* =================================================
-            LEFT SIDE
-        ================================================= */}
+              LEFT SIDE
+          ================================================= */}
 
           <div className="flex items-center gap-3 sm:gap-6">
             {user && !authLoading ? (
@@ -415,7 +438,6 @@ export function Header() {
 
             <nav className={cn("hidden items-center gap-1", !user && "lg:flex")}>
               {navLinks.map((link) => {
-                // Hide "List Your Property" only for renters
                 if (link.to === "/list-property" && profile?.role === "renter") {
                   return null;
                 }
@@ -437,8 +459,8 @@ export function Header() {
           </div>
 
           {/* =================================================
-            RIGHT SIDE
-        ================================================= */}
+              RIGHT SIDE
+          ================================================= */}
 
           <div className="flex items-center gap-2">
             {/* CITY */}
@@ -448,8 +470,22 @@ export function Header() {
             </div>
 
             {/* =================================================
-              NOTIFICATIONS
-          ================================================= */}
+                SAVED ROOMS — RENTER ONLY
+            ================================================= */}
+
+            {user && !authLoading && !isLandlord ? (
+              <Link
+                to="/saved"
+                aria-label="Saved rooms"
+                className="relative flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-primary"
+              >
+                <Heart className="h-[18px] w-[18px]" />
+              </Link>
+            ) : null}
+
+            {/* =================================================
+                NOTIFICATIONS
+            ================================================= */}
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -484,37 +520,25 @@ export function Header() {
             </DropdownMenu>
 
             {/* =================================================
-              DESKTOP AUTH
-          ================================================= */}
+                DESKTOP AUTH
+            ================================================= */}
 
             <div className="hidden items-center gap-2 md:flex">
               {authLoading ? (
-                /* LOADING */
-
                 <div className="h-9 w-20 animate-pulse rounded-xl bg-muted" />
               ) : user ? (
-                /* =================================================
-                 LOGGED IN
-              ================================================= */
-
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="flex items-center gap-2 rounded-xl px-3">
-                      {/* PROFILE ICON */}
-
                       <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
                         <UserIcon className="h-4 w-4" />
                       </span>
-
-                      {/* USER NAME */}
 
                       <span className="max-w-[120px] truncate font-medium">{displayName}</span>
                     </Button>
                   </DropdownMenuTrigger>
 
                   <DropdownMenuContent align="end" className="w-60 rounded-2xl">
-                    {/* USER INFO */}
-
                     <DropdownMenuLabel>
                       <div className="flex flex-col">
                         <span className="font-semibold">{displayName}</span>
@@ -531,15 +555,22 @@ export function Header() {
 
                     <DropdownMenuSeparator />
 
-                    {/* =================================================
-                      ROLE-SPECIFIC DASHBOARD
-                  ================================================= */}
+                    {/* DASHBOARD */}
 
                     <DropdownMenuItem asChild>
                       <Link to={dashboardRoute} className="cursor-pointer">
                         <LayoutDashboard className="mr-2 h-4 w-4" />
 
                         {dashboardLabel}
+                      </Link>
+                    </DropdownMenuItem>
+
+                    {/* PROFILE */}
+
+                    <DropdownMenuItem asChild>
+                      <Link to={profileRoute} className="cursor-pointer">
+                        <UserIcon className="mr-2 h-4 w-4" />
+                        Profile
                       </Link>
                     </DropdownMenuItem>
 
@@ -557,10 +588,6 @@ export function Header() {
                   </DropdownMenuContent>
                 </DropdownMenu>
               ) : (
-                /* =================================================
-                 LOGGED OUT
-              ================================================= */
-
                 <>
                   <Button asChild variant="ghost" className="rounded-xl">
                     <Link to="/login">Login</Link>
@@ -574,8 +601,8 @@ export function Header() {
             </div>
 
             {/* =================================================
-              MOBILE MENU
-          ================================================= */}
+                MOBILE MENU
+            ================================================= */}
 
             <Sheet>
               <SheetTrigger asChild>
@@ -611,8 +638,8 @@ export function Header() {
                   })}
 
                   {/* =================================================
-                    MOBILE LOGGED IN
-                ================================================= */}
+                      MOBILE LOGGED IN
+                  ================================================= */}
 
                   {user ? (
                     <>
@@ -630,6 +657,8 @@ export function Header() {
                         </p>
                       </div>
 
+                      {/* SAVED ROOMS */}
+
                       <Link
                         to="/saved"
                         className="flex items-center gap-2 rounded-xl px-3 py-2.5 font-medium hover:bg-muted"
@@ -638,14 +667,21 @@ export function Header() {
                         Saved Rooms
                       </Link>
 
+                      {/* MESSAGES */}
+
                       <Link
                         to="/messages"
-                        search={{ propertyId: undefined, landlordId: undefined }}
+                        search={{
+                          propertyId: undefined,
+                          landlordId: undefined,
+                        }}
                         className="flex items-center gap-2 rounded-xl px-3 py-2.5 font-medium hover:bg-muted"
                       >
                         <MessageSquare className="h-4 w-4" />
                         Messages
                       </Link>
+
+                      {/* NOTIFICATIONS */}
 
                       <Link
                         to="/notifications"
@@ -660,7 +696,7 @@ export function Header() {
                         )}
                       </Link>
 
-                      {/* ROLE-SPECIFIC DASHBOARD */}
+                      {/* DASHBOARD */}
 
                       <Link
                         to={dashboardRoute}
@@ -669,6 +705,16 @@ export function Header() {
                         <LayoutDashboard className="h-4 w-4" />
 
                         {dashboardLabel}
+                      </Link>
+
+                      {/* PROFILE */}
+
+                      <Link
+                        to={profileRoute}
+                        className="flex items-center gap-2 rounded-xl px-3 py-2.5 font-medium hover:bg-muted"
+                      >
+                        <UserIcon className="h-4 w-4" />
+                        Profile
                       </Link>
 
                       {/* LOGOUT */}
@@ -682,10 +728,6 @@ export function Header() {
                       </button>
                     </>
                   ) : (
-                    /* =================================================
-                     MOBILE LOGGED OUT
-                  ================================================= */
-
                     <div className="mt-4 flex flex-col gap-2">
                       <Button asChild variant="outline" className="rounded-xl">
                         <Link to="/login">Login</Link>
@@ -710,9 +752,15 @@ export function Header() {
    BOTTOM NAVIGATION
 ========================================================= */
 
-const bottomNav = [
+/*
+   LANDLORD NAVIGATION
+   -------------------
+   Existing landlord navigation remains separate.
+*/
+
+const landlordBottomNav = [
   {
-    to: "/dashboard",
+    to: "/landlord",
     label: "Dashboard",
     icon: LayoutDashboard,
   },
@@ -732,7 +780,41 @@ const bottomNav = [
     icon: MessageSquare,
   },
   {
-    to: "/dashboard",
+    to: "/landlord-profile",
+    label: "Profile",
+    icon: UserIcon,
+  },
+] as const;
+
+/*
+   RENTER NAVIGATION
+   -----------------
+   Home goes to the actual application homepage.
+*/
+
+const renterBottomNav = [
+  {
+    to: "/",
+    label: "Home",
+    icon: Home,
+  },
+  {
+    to: "/search",
+    label: "Explore",
+    icon: MapPin,
+  },
+  {
+    to: "/bookings",
+    label: "Visits",
+    icon: CalendarDays,
+  },
+  {
+    to: "/messages",
+    label: "Chat",
+    icon: MessageSquare,
+  },
+  {
+    to: "/profile",
     label: "Profile",
     icon: UserIcon,
   },
@@ -742,41 +824,87 @@ export function BottomNav() {
   const pathname = useRouterState({
     select: (s) => s.location.pathname,
   });
+
   const { role } = useApp();
 
-  const dashboardRoute = role === "landlord" ? "/landlord" : "/dashboard";
-  const profileRoute = role === "landlord" ? "/landlord-profile" : "/dashboard";
+  const isLandlord = role === "landlord";
+
+  const items = isLandlord ? landlordBottomNav : renterBottomNav;
 
   return (
-    <nav className="fixed inset-x-3 bottom-3 z-40 rounded-2xl border border-border bg-card/95 shadow-[var(--shadow-float)] backdrop-blur-md lg:hidden">
-      <div className="flex items-stretch justify-around px-1 pb-[env(safe-area-inset-bottom)]">
-        {bottomNav.map((item) => {
-          const target =
-            item.label === "Dashboard"
-              ? dashboardRoute
-              : item.label === "Profile"
-                ? profileRoute
-                : item.to;
+    <nav
+      className={cn(
+        "fixed inset-x-3 bottom-3 z-40 lg:hidden",
+        isLandlord
+          ? "rounded-2xl border border-border bg-card/95 shadow-[var(--shadow-float)] backdrop-blur-md"
+          : "rounded-[24px] border border-primary/10 bg-background/95 shadow-[0_8px_30px_rgba(0,0,0,0.12)] backdrop-blur-xl",
+      )}
+    >
+      <div
+        className={cn(
+          "flex items-stretch px-1 pb-[env(safe-area-inset-bottom)]",
+          !isLandlord && "p-1",
+        )}
+      >
+        {items.map((item) => {
+          /*
+             Home on renter side is the actual homepage.
+             We use exact matching so /dashboard doesn't
+             accidentally activate Home.
+          */
+
           const active =
-            item.label === "Dashboard" ? pathname === target : pathname.startsWith(target);
+            item.to === "/"
+              ? pathname === "/"
+              : pathname === item.to || pathname.startsWith(`${item.to}/`);
 
           return (
             <Link
               key={item.label}
-              to={target}
+              to={item.to}
               search={
-                item.label === "Messages"
-                  ? { propertyId: undefined, landlordId: undefined }
-                  : undefined
+                item.label === "Chat"
+                  ? {
+                      propertyId: undefined,
+                      landlordId: undefined,
+                    }
+                  : item.label === "Explore"
+                    ? {
+                        city: undefined,
+                        type: undefined,
+                        budget: undefined,
+                      }
+                    : undefined
               }
               className={cn(
-                "flex min-h-14 flex-1 flex-col items-center justify-center gap-1 rounded-xl text-[10px] font-semibold transition-colors sm:text-[11px]",
-                active ? "bg-primary/10 text-primary" : "text-muted-foreground",
-              )}
-            >
-              <item.icon className={cn("h-5 w-5", active && "fill-primary/10")} />
+                "relative flex min-h-14 flex-1 flex-col items-center justify-center gap-1 text-[10px] font-semibold transition-all sm:text-[11px]",
 
-              {item.label}
+                /* LANDLORD STYLE */
+                isLandlord
+                  ? active
+                    ? "rounded-xl bg-primary/10 text-primary"
+                    : "text-muted-foreground"
+                  : /* RENTER STYLE */
+                    active
+                    ? "rounded-[18px] bg-primary text-primary-foreground shadow-sm"
+                    : "rounded-[18px] text-muted-foreground hover:bg-primary/5 hover:text-primary",
+              )}
+              aria-current={active ? "page" : undefined}
+            >
+              <item.icon
+                className={cn(
+                  "h-[18px] w-[18px] transition-transform",
+                  !isLandlord && active && "scale-110",
+                )}
+              />
+
+              <span>{item.label}</span>
+
+              {/* RENTER ACTIVE INDICATOR */}
+
+              {!isLandlord && active ? (
+                <span className="absolute -bottom-0.5 h-1 w-1 rounded-full bg-primary-foreground" />
+              ) : null}
             </Link>
           );
         })}
@@ -791,6 +919,7 @@ export function BottomNav() {
 
 export function Footer() {
   const { role, city } = useApp();
+
   return (
     <footer className="mt-16 hidden border-t border-border bg-surface lg:block">
       <div className="container-page grid gap-8 py-12 sm:grid-cols-2 lg:grid-cols-4">
@@ -813,7 +942,11 @@ export function Footer() {
             <li>
               <Link
                 to="/search"
-                search={{ city: undefined, type: undefined, budget: undefined }}
+                search={{
+                  city: undefined,
+                  type: undefined,
+                  budget: undefined,
+                }}
                 className="hover:text-primary"
               >
                 Find a room
@@ -834,7 +967,13 @@ export function Footer() {
           <h4 className="text-sm font-semibold">For Landlords</h4>
 
           <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
-            <li>{role !== "renter" && <Link to="/list-property">List Your Property</Link>}</li>
+            <li>
+              {role !== "renter" && (
+                <Link to="/list-property" className="hover:text-primary">
+                  List Your Property
+                </Link>
+              )}
+            </li>
 
             <li>
               <Link to="/landlord" className="hover:text-primary">
@@ -857,6 +996,7 @@ export function Footer() {
 
           <p className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
             <Building2 className="h-4 w-4 text-primary" />
+
             {city ? `${city}, India` : "Choose your city"}
           </p>
 
@@ -880,8 +1020,6 @@ export function Footer() {
 ========================================================= */
 
 export function Page({ children, footer = true }: { children: ReactNode; footer?: boolean }) {
-  const { user } = useApp();
-
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <Header />

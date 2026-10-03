@@ -821,53 +821,69 @@ function SearchPage() {
       ====================================================== */}
 
       <div className="border-b border-border bg-surface">
-        <div className="container-page py-4">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            {/* CITY */}
+        <div className="container-page py-3 sm:py-4">
+          {/* LOCATION + FILTER — SAME ROW */}
+          <div className="flex items-center gap-2">
             <button
+              type="button"
               onClick={openLocationModal}
-              className="flex min-w-0 w-full items-center justify-center gap-2 rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm font-medium sm:w-auto sm:justify-start"
+              className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm font-semibold shadow-sm transition-colors hover:bg-muted"
+              aria-label="Change location"
             >
               <MapPin className="h-4 w-4 shrink-0 text-primary" />
-
               <span className="truncate">{activeCity ?? "Select city"}</span>
             </button>
 
-            {/* SEARCH */}
-            <div className="relative min-w-0 w-full flex-1">
-              <SearchIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-
-              <Input
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search area, e.g. Gomti Nagar"
-                className="h-11 w-full rounded-xl pl-9"
-              />
-            </div>
-
-            {/* MOBILE FILTER BUTTON */}
             <Button
-              variant="outline"
-              className="w-full rounded-xl sm:w-auto lg:hidden"
+              type="button"
+              variant={showFilters ? "default" : "outline"}
+              size="icon"
+              className="h-11 w-11 shrink-0 rounded-xl"
               onClick={() => setShowFilters((value) => !value)}
+              aria-label={showFilters ? "Hide filters" : "Open filters"}
+              title={showFilters ? "Hide filters" : "Open filters"}
             >
               <SlidersHorizontal className="h-4 w-4" />
-              {showFilters ? "Hide filters" : "Filters"}
             </Button>
+          </div>
 
-            {/* VERIFIED */}
-            <div className="ml-auto hidden items-center gap-1.5 text-sm text-muted-foreground lg:flex">
-              <Star className="h-4 w-4 fill-warning text-warning" />
-              Only verified owners
-            </div>
+          {/* SEARCH */}
+          <div className="relative mt-2">
+            <SearchIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+
+            <Input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search area, e.g. Gomti Nagar"
+              className={cn("h-11 w-full rounded-xl bg-background pl-9 shadow-sm", query && "pr-9")}
+              aria-label="Search rooms by area"
+            />
+
+            {query ? (
+              <button
+                type="button"
+                onClick={() => setQuery("")}
+                className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                aria-label="Clear search"
+                title="Clear search"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            ) : null}
           </div>
 
           {/* MOBILE FILTERS */}
-          {showFilters && (
+          {showFilters ? (
             <div className="card-surface mt-3 max-h-[60vh] overflow-y-auto overscroll-contain p-4 lg:hidden">
               {Filters}
             </div>
-          )}
+          ) : null}
+
+          {/* DESKTOP VERIFIED INDICATOR */}
+          <div className="mt-3 hidden items-center gap-1.5 text-xs text-muted-foreground lg:flex">
+            <Star className="h-3.5 w-3.5 fill-warning text-warning" />
+            Only verified owners
+          </div>
         </div>
       </div>
 
@@ -898,14 +914,38 @@ function SearchPage() {
           ================================================== */}
 
           <section className={cn(mobileView === "map" && "hidden lg:block")}>
-            <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="mb-4 flex gap-2 overflow-x-auto pb-1 lg:hidden">
+              {["Any type", "PG", "Flat", "Room", "Studio"].map((roomType) => (
+                <button
+                  key={roomType}
+                  type="button"
+                  onClick={() => setType(roomType)}
+                  className={cn(
+                    "shrink-0 rounded-xl border px-3 py-2 text-xs font-semibold transition-colors",
+                    type === roomType
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border bg-background text-muted-foreground hover:bg-muted",
+                  )}
+                >
+                  {roomType}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex items-center justify-between gap-3">
               <h1 className="min-w-0 text-lg font-bold sm:text-xl">
-                {results.length} rooms in {activeCity ?? "your city"}
+                {results.length} {results.length === 1 ? "room" : "rooms"} in{" "}
+                {activeCity ?? "your city"}
               </h1>
 
-              <span className="hidden shrink-0 text-sm text-muted-foreground sm:inline">
-                Sorted by relevance
-              </span>
+              <button
+                type="button"
+                onClick={() => setShowFilters(true)}
+                className="hidden items-center gap-1.5 rounded-xl border border-border bg-background px-3 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:bg-muted sm:flex"
+              >
+                <SlidersHorizontal className="h-3.5 w-3.5" />
+                Sort
+              </button>
             </div>
 
             {/* ERROR */}

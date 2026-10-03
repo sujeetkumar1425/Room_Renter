@@ -20,6 +20,7 @@ import { Route as ListPropertyRouteImport } from './routes/list-property'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as MessagesRouteImport } from './routes/messages'
 import { Route as NotificationsRouteImport } from './routes/notifications'
+import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as SavedRouteImport } from './routes/saved'
 import { Route as SearchRouteImport } from './routes/search'
 import { Route as SignupRouteImport } from './routes/signup'
@@ -80,6 +81,11 @@ const NotificationsRoute = NotificationsRouteImport.update({
   path: '/notifications',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SavedRoute = SavedRouteImport.update({
   id: '/saved',
   path: '/saved',
@@ -113,6 +119,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/messages': typeof MessagesRoute
   '/notifications': typeof NotificationsRoute
+  '/profile': typeof ProfileRoute
   '/saved': typeof SavedRoute
   '/search': typeof SearchRoute
   '/signup': typeof SignupRoute
@@ -130,6 +137,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/messages': typeof MessagesRoute
   '/notifications': typeof NotificationsRoute
+  '/profile': typeof ProfileRoute
   '/saved': typeof SavedRoute
   '/search': typeof SearchRoute
   '/signup': typeof SignupRoute
@@ -148,6 +156,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/messages': typeof MessagesRoute
   '/notifications': typeof NotificationsRoute
+  '/profile': typeof ProfileRoute
   '/saved': typeof SavedRoute
   '/search': typeof SearchRoute
   '/signup': typeof SignupRoute
@@ -167,6 +176,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/messages'
     | '/notifications'
+    | '/profile'
     | '/saved'
     | '/search'
     | '/signup'
@@ -184,6 +194,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/messages'
     | '/notifications'
+    | '/profile'
     | '/saved'
     | '/search'
     | '/signup'
@@ -201,6 +212,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/messages'
     | '/notifications'
+    | '/profile'
     | '/saved'
     | '/search'
     | '/signup'
@@ -219,6 +231,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   MessagesRoute: typeof MessagesRoute
   NotificationsRoute: typeof NotificationsRoute
+  ProfileRoute: typeof ProfileRoute
   SavedRoute: typeof SavedRoute
   SearchRoute: typeof SearchRoute
   SignupRoute: typeof SignupRoute
@@ -304,6 +317,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NotificationsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/saved': {
       id: '/saved'
       path: '/saved'
@@ -347,6 +367,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   MessagesRoute: MessagesRoute,
   NotificationsRoute: NotificationsRoute,
+  ProfileRoute: ProfileRoute,
   SavedRoute: SavedRoute,
   SearchRoute: SearchRoute,
   SignupRoute: SignupRoute,

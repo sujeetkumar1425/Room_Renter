@@ -1,362 +1,747 @@
-# RoomSpace Lucknow
+# Room Renter
 
-Create a high-fidelity responsive web application called “Room Renter”, an Indian room-rental platform connecting renters with landlords. Make the UX as simple and fast as Uber/Rapido: location-first search, clean cards, minimal steps and obvious CTAs. Do not copy existing brands.
+A modern Indian room-rental platform connecting renters with landlords. Room Renter is designed to make finding, visiting, and renting a room simple, fast, and transparent.
 
-STYLE
+The UX is inspired by location-first apps such as Uber/Rapido: detect the user's location, show relevant properties, keep the search flow simple, and make important actions obvious.
 
-Premium modern startup UI. White/light background, modern typography, rounded cards, subtle shadows, generous spacing, high-quality room photos, minimal icons and clear hierarchy. Use teal/green or blue as the main accent with neutral gray tones. Create desktop and mobile designs. Use realistic Indian names, locations and ₹ INR prices.
+## Product Overview
 
-LOCATION ACCESS
+Room Renter connects:
 
-When a new user opens the app for the first time, show a clean location-permission modal before the main experience.
+- 🧑‍🎓 Room seekers looking for rooms, flats and shared spaces
+- 🏠 Landlords listing and managing properties
+- 💬 Renters and landlords through direct messaging
+- 📅 Users through scheduled property visits
+- 📄 Renters and landlords through rental agreements
+- ⭐ Users through property and landlord reviews
 
-Modal:
+The platform focuses on:
 
-“Find rooms near you”
+- Location-based discovery
+- Verified properties and landlords
+- Transparent rental information
+- Fast communication
+- Property visits
+- Rental agreements
+- Responsive mobile and desktop experiences
 
-“Allow location access to discover rooms and properties available near your current location.”
+---
 
-Buttons:
+# LOCATION ACCESS
 
-“Allow Location”
+When a new user opens the application for the first time, the application can request location access before showing location-based results.
 
-“Enter Location Manually”
+### Location Permission Modal
 
-Use a location-pin illustration/icon. Keep the popup friendly and minimal.
+**Find rooms near you**
 
-If the user allows location, detect their city and check availability.
+> Allow location access to discover rooms and properties available near your current location.
 
-IMPORTANT: Currently Room Renter is ONLY AVAILABLE IN LUCKNOW.
+Options:
 
-If the detected/manual city is Lucknow:
+- Allow Location
+- Enter Location Manually
 
-Show:
+A location-pin icon/illustration should be used to keep the experience clear and friendly.
 
-“Rooms available in Lucknow”
+### Location Behaviour
 
-and display Lucknow properties.
+If the user allows location access:
 
-If the city is not Lucknow:
+1. Detect the user's approximate location.
+2. Determine the user's city.
+3. Load properties available for that location.
+4. Display the selected city throughout the relevant search experience.
 
-Show a clear “Coming Soon” state:
+If location access is denied:
 
-“Room Renter is coming soon to your city.”
+- Allow the user to manually select a location.
+- Do not block the user from using the application.
+- Clearly indicate when a location needs to be selected.
 
-“Currently, Room Renter is available only in Lucknow. We’re working to bring rooms to your city soon.”
+The application should not assume a fixed city such as Lucknow.
 
-Button:
+---
 
-“Explore Lucknow”
+# HOME
 
-Do not show unavailable-city properties as if they are currently available.
+Header:
 
-HOME
-
-Header: Room Renter logo, Find a Room, List Your Property, How It Works, Login, Sign Up.
+- Room Renter logo
+- Find a Room
+- List Your Property
+- How It Works
+- Login
+- Sign Up
 
 Hero:
 
-“Find a room that feels like home.”
+> **Find a room that feels like home.**
 
 Subtitle:
 
-“Discover verified rooms, flats and shared spaces near your college, workplace or preferred location.”
+> Discover verified rooms, flats and shared spaces near your college, workplace or preferred location.
 
 Large search:
 
-Location, Move-in Date, Budget, Room Type + Search Rooms.
+- Location
+- Move-in Date
+- Budget
+- Room Type
+- Search Rooms
 
-If location is not selected, encourage location access or manual location selection.
+If a location is not selected, encourage the user to allow location access or manually select a location.
 
-AVAILABLE CITIES
+---
 
-Create a city selection section.
+# LOCATION & CITY DISCOVERY
 
-Lucknow:
+The application should support location-based property discovery.
 
-“Available Now” ✓
+Users can:
 
-Other cities:
+- Detect their current city
+- Select a city manually
+- Search properties based on location
+- See whether properties are available in the selected location
 
-Delhi — Coming Soon
+Cities can be added or enabled as the platform expands.
 
-Noida — Coming Soon
+Example cities:
 
-Gurgaon — Coming Soon
+- Delhi
+- Noida
+- Gurgaon
+- Bengaluru
+- Mumbai
+- Pune
+- Hyderabad
+- Lucknow
 
-Bengaluru — Coming Soon
+Cities without available listings should display an appropriate **Coming Soon** or **No Properties Available** state rather than showing unrelated properties.
 
-Mumbai — Coming Soon
+---
 
-Pune — Coming Soon
+# SUGGESTED ROOMS
 
-Hyderabad — Coming Soon
-
-Coming-soon cities should appear visually disabled/muted and should not allow normal room searching.
-
-SUGGESTED ROOMS
-
-Place “Suggested Rooms” at the TOP of the home page immediately below the main search section.
+Place **Suggested Rooms** near the top of the home page immediately below the main search/location section.
 
 Heading:
 
-“Suggested Rooms for You”
+> **Suggested Rooms for You**
 
 Subtitle:
 
-“Rooms selected based on your location and preferences.”
+> Rooms selected based on your location and preferences.
 
-Show 4–6 attractive room cards before other discovery sections.
+Show 4–6 attractive room cards when suitable properties are available.
 
 Cards should show:
 
-Large photo, title, location, ₹ rent/month, rating, reviews, room type, key amenities, Verified badge and favorite button.
+- Large photo
+- Title
+- Location
+- ₹ rent/month
+- Rating
+- Reviews
+- Room type
+- Key amenities
+- Verified badge
+- Favorite button
 
 Example:
 
-“Fully Furnished Room in Gomti Nagar”
+**Fully Furnished Room**
 
 ₹10,000/month
 
-★4.8 (24)
+★ 4.8 (24)
 
 Gomti Nagar, Lucknow
 
 Wi-Fi · AC · Attached Bathroom
 
-“View Details”
+**View Details**
 
-For new users with no preferences, suggest popular/high-rated/verified rooms in Lucknow.
+For new users without preferences, suggestions can use available properties that are popular, highly rated or verified in the selected location.
 
-SEARCH
+---
 
-Create a property discovery page with listings + interactive map.
+# SEARCH
 
-Search bar:
+Create a property discovery page containing listings and an interactive map.
 
-Location, Budget, Move-in Date, Room Type.
+Search options:
+
+- Location
+- Budget
+- Move-in Date
+- Room Type
 
 Filters:
 
-Price, Room Type, Furnished, Bathroom, Food, Parking, Wi-Fi, AC, Gender, Availability, Verified.
-
-Only allow active search results for Lucknow.
+- Price
+- Room Type
+- Furnished
+- Bathroom
+- Food
+- Parking
+- Wi-Fi
+- AC
+- Gender
+- Availability
+- Verified
 
 Property card:
 
-Large photo, title, location, rent/month, deposit, rating, reviews, room type, amenities, distance, verified badge and favorite button.
+- Large photo
+- Title
+- Location
+- Rent/month
+- Deposit
+- Rating
+- Reviews
+- Room type
+- Amenities
+- Distance
+- Verified badge
+- Favorite button
 
-Map markers show prices such as ₹5K, ₹8K, ₹10K and ₹15K. Clicking a marker opens its property card.
+Map markers can show prices such as:
 
-If user searches another city:
+- ₹5K
+- ₹8K
+- ₹10K
+- ₹15K
 
-Show Coming Soon instead of property results.
+Clicking a map marker should open or highlight the related property card.
 
-PROPERTY DETAILS
+If the selected location has no available properties, show a clear empty-state message instead of unrelated listings.
 
-Large image gallery with thumbnails, favorite and share.
+---
 
-Show title, rating, location, monthly rent, deposit, availability, room type, occupancy and gender preference.
+# PROPERTY DETAILS
 
-Amenities: Wi-Fi, AC, Washing Machine, Kitchen, Parking, Bathroom, Power Backup, Food.
+Large image gallery with:
 
-Sections: Description, Map, Nearby Places, Reviews and Landlord.
-
-Landlord card: photo, name, rating, Verified Owner, response rate/time.
-
-Buttons: Contact Owner, Schedule Visit.
-
-After rental approval: Create Rental Agreement.
-
-CHAT & VISITS
-
-Simple renter-landlord chat with property preview, messages and call option.
-
-Quick messages:
-
-“Is this room available?”
-
-“Can I schedule a visit?”
-
-“Any additional charges?”
-
-Visit flow:
-
-Choose date/time → Confirm Visit.
-
-Show upcoming visit with location, cancel and reschedule.
-
-RENTER DASHBOARD
-
-Sidebar:
-
-Overview, Saved Rooms, Applications, Visits, Rental Agreements, Messages, Profile, Settings.
+- Thumbnails
+- Favorite
+- Share
 
 Show:
 
-Suggested Rooms, Recently Viewed, Saved Rooms, Upcoming Visits, Agreements and Messages.
-
-LANDLORD DASHBOARD
-
-Sidebar:
-
-Dashboard, My Properties, Add Property, Enquiries, Visits, Rental Agreements, Messages, Reviews, Profile, Settings.
-
-Stats:
-
-Active Listings, Views, Enquiries, Visits, Applications.
-
-Property cards with photo, rent, views, enquiries and status.
-
-Actions: Edit, Pause, View Enquiries.
-
-ADD PROPERTY
-
-Wizard:
-
-Location → Room Details → Amenities → Photos → Rules → Preview.
-
-Collect:
-
-Address, city, map location, property type, room type, occupancy, furnished status, rent, deposit and availability.
-
-Only allow new listings in currently supported cities. Since Lucknow is the only active city, landlords can currently list properties only in Lucknow.
+- Property title
+- Rating
+- Location
+- Monthly rent
+- Deposit
+- Availability
+- Room type
+- Occupancy
+- Gender preference
 
 Amenities:
 
-Wi-Fi, AC, Parking, Kitchen, Bathroom, Washing Machine, Power Backup, Food.
+- Wi-Fi
+- AC
+- Washing Machine
+- Kitchen
+- Parking
+- Bathroom
+- Power Backup
+- Food
 
-Photo uploader with preview, delete, reorder and cover image.
+Sections:
 
-Rules:
+- Description
+- Map
+- Nearby Places
+- Reviews
+- Landlord
 
-Guests, pets, smoking, noise, subletting, gender preference and custom rules.
+Landlord card:
 
-Final preview + Publish Property.
+- Photo
+- Name
+- Rating
+- Verified Owner
+- Response rate/time
 
-RENTAL AGREEMENT
+Actions:
+
+- Contact Owner
+- Schedule Visit
+
+After rental approval:
+
+**Create Rental Agreement**
+
+---
+
+# CHAT & VISITS
+
+Provide simple renter-landlord communication with:
+
+- Property preview
+- Messages
+- Call option
+
+Quick messages:
+
+- "Is this room available?"
+- "Can I schedule a visit?"
+- "Any additional charges?"
+
+### Visit Flow
+
+Choose date/time → Confirm Visit
+
+Show upcoming visits with:
+
+- Property
+- Date
+- Time
+- Location
+- Cancel
+- Reschedule
+
+---
+
+# RENTER DASHBOARD
+
+Navigation:
+
+- Overview
+- Saved Rooms
+- Applications
+- Visits
+- Rental Agreements
+- Messages
+- Profile
+- Settings
+
+Show:
+
+- Suggested Rooms
+- Recently Viewed
+- Saved Rooms
+- Upcoming Visits
+- Agreements
+- Messages
+
+---
+
+# LANDLORD DASHBOARD
+
+Navigation:
+
+- Dashboard
+- My Properties
+- Add Property
+- Enquiries
+- Visits
+- Rental Agreements
+- Messages
+- Reviews
+- Profile
+- Settings
+
+Stats:
+
+- Active Listings
+- Views
+- Enquiries
+- Visits
+- Applications
+
+Property cards should display:
+
+- Photo
+- Rent
+- Views
+- Enquiries
+- Status
+
+Actions:
+
+- Edit
+- Pause
+- View Enquiries
+
+---
+
+# ADD PROPERTY
+
+Use a multi-step wizard:
+
+**Location → Room Details → Amenities → Photos → Rules → Preview**
+
+Collect:
+
+- Address
+- City
+- Map location
+- Property type
+- Room type
+- Occupancy
+- Furnished status
+- Rent
+- Deposit
+- Availability
+
+Properties should only be published in locations supported by the application's current property availability rules.
+
+### Amenities
+
+- Wi-Fi
+- AC
+- Parking
+- Kitchen
+- Bathroom
+- Washing Machine
+- Power Backup
+- Food
+
+### Photo Uploader
+
+Support:
+
+- Preview
+- Delete
+- Reorder
+- Cover image
+
+### Rules
+
+- Guests
+- Pets
+- Smoking
+- Noise
+- Subletting
+- Gender preference
+- Custom rules
+
+Final step:
+
+**Preview → Publish Property**
+
+---
+
+# RENTAL AGREEMENT
 
 Make Rental Agreement a major feature.
 
 Entry points:
 
-Property details, renter dashboard, landlord dashboard and accepted rental request.
+- Property details
+- Renter dashboard
+- Landlord dashboard
+- Accepted rental request
 
 Card:
 
-“Rental Agreement”
+> **Rental Agreement**
 
-“Create a rental agreement with your landlord before moving in.”
+> Create a rental agreement with your landlord before moving in.
 
-Button: Create Agreement.
+Button:
 
-Wizard:
+**Create Agreement**
 
-Details → Terms → Review → Sign.
+### Agreement Wizard
 
-Auto-fill property address, rent, deposit and move-in date.
+**Details → Terms → Review → Sign**
+
+Auto-fill:
+
+- Property address
+- Rent
+- Deposit
+- Move-in date
 
 Tenant and landlord details:
 
-Name, phone, email, address and ID verification.
+- Name
+- Phone
+- Email
+- Address
+- ID verification
 
 Terms:
 
-Rent, deposit, duration, start/end date, due date, notice period, maintenance, electricity, water, parking, late charges and renewal.
+- Rent
+- Deposit
+- Duration
+- Start/end date
+- Due date
+- Notice period
+- Maintenance
+- Electricity
+- Water
+- Parking
+- Late charges
+- Renewal
 
-House rules and custom clauses.
+Also support:
 
-AGREEMENT PREVIEW
+- House rules
+- Custom clauses
 
-Professional document preview showing landlord, tenant, property, rent, deposit and duration.
+---
+
+# AGREEMENT PREVIEW
+
+Provide a professional document preview showing:
+
+- Landlord
+- Tenant
+- Property
+- Rent
+- Deposit
+- Duration
 
 Sections:
 
-Parties, Property, Rent, Deposit, Duration, Utilities, Responsibilities, Rules, Notice, Termination, Clauses, Signatures.
+- Parties
+- Property
+- Rent
+- Deposit
+- Duration
+- Utilities
+- Responsibilities
+- Rules
+- Notice
+- Termination
+- Clauses
+- Signatures
 
-Buttons:
+Actions:
 
-Edit, Download PDF, Send for Signature.
+- Edit
+- Download PDF
+- Send for Signature
 
-Signing timeline:
+### Signing Timeline
 
-Created → Tenant Signed → Landlord Signed → Completed.
+Created → Tenant Signed → Landlord Signed → Completed
 
-Success:
+Success state:
 
-“✓ Agreement Signed Successfully”
+> ✓ Agreement Signed Successfully
 
-Show agreement ID, date and validity.
+Show:
+
+- Agreement ID
+- Date
+- Validity
 
 Statuses:
 
-Draft, Waiting for Tenant, Waiting for Landlord, Signed, Expired.
+- Draft
+- Waiting for Tenant
+- Waiting for Landlord
+- Signed
+- Expired
 
 Include:
 
-“Review all terms carefully before signing. Agreement requirements may vary by location.”
+> Review all terms carefully before signing. Agreement requirements may vary by location.
 
-REVIEWS & TRUST
+---
 
-Show overall rating, rating breakdown and reviews.
+# REVIEWS & TRUST
 
-Badges:
+Show:
 
-Identity Verified, Owner Verified, Property Verified, Verified Renter, Agreement Signed.
+- Overall rating
+- Rating breakdown
+- Reviews
 
-NOTIFICATIONS
+Trust badges:
 
-New messages, visit reminders, rental requests, agreement received/signed, agreement expiry and saved-property updates.
+- Identity Verified
+- Owner Verified
+- Property Verified
+- Verified Renter
+- Agreement Signed
 
-MOBILE
+Reviews should be based on actual user-generated data rather than hardcoded ratings.
 
-Create mobile versions of Home, Search, Map, Property Details, Chat, Visits, Dashboards, Add Property and Rental Agreement.
+---
+
+# NOTIFICATIONS
+
+Support notifications for:
+
+- New messages
+- Visit reminders
+- Rental requests
+- Agreement received
+- Agreement signed
+- Agreement expiry
+- Saved-property updates
+
+---
+
+# MOBILE
+
+Create responsive mobile versions of:
+
+- Home
+- Search
+- Map
+- Property Details
+- Chat
+- Visits
+- Renter Dashboard
+- Landlord Dashboard
+- Add Property
+- Rental Agreement
 
 Bottom navigation:
 
-Home | Search | Saved | Messages | Profile
+**Home | Search | Saved | Messages | Profile**
 
-Use floating Map button and mobile-friendly agreement signing.
+Use:
 
-UI STATES
+- Floating Map button
+- Touch-friendly controls
+- Mobile-friendly agreement signing
+- Responsive cards and forms
+
+---
+
+# UI STATES
 
 Create polished states for:
 
-No results, no saved rooms, no messages, unavailable property, location permission denied, network error and loading skeletons.
+- No results
+- No saved rooms
+- No messages
+- Unavailable property
+- Location permission denied
+- Location not selected
+- Network error
+- Loading skeletons
+- No properties available in selected city
 
-Create a dedicated Coming Soon screen for unsupported cities.
+When a city does not currently have listings, provide a clear message and allow the user to select another location.
 
-DESIGN SYSTEM
+---
 
-Create reusable buttons, inputs, search bars, filter chips, property cards, ratings, badges, profiles, agreement cards, chat bubbles, notifications, modals, maps, galleries and progress indicators.
+# DESIGN SYSTEM
 
-CORE JOURNEY
+Create reusable:
 
-📍 Location Access → 🔎 Find → 🏠 Visit → 🤝 Agree → 📄 Rental Agreement → ✍️ Sign → 🔑 Move In
+- Buttons
+- Inputs
+- Search bars
+- Filter chips
+- Property cards
+- Ratings
+- Badges
+- Profiles
+- Agreement cards
+- Chat bubbles
+- Notifications
+- Modals
+- Maps
+- Galleries
+- Progress indicators
 
-Make Room Renter feel like a production-ready Indian rental startup, not a traditional real-estate website. Prioritize simplicity, trust, transparency, location-based discovery and fast communication.
+Design principles:
 
-IMPORTANT PRODUCT RULE:
+- Premium modern startup UI
+- White/light background
+- Modern typography
+- Rounded cards
+- Subtle shadows
+- Generous spacing
+- High-quality room photos
+- Minimal icons
+- Clear hierarchy
+- Teal/green or blue accent
+- Neutral gray tones
+- Responsive desktop and mobile layouts
+- Realistic Indian names, locations and ₹ INR prices
 
-Lucknow is the ONLY currently active city. All other cities must display “Coming Soon”. Suggested Rooms must always appear near the TOP of the Home page, directly below the main search/location section.
+---
 
-This project was built with [Lovable](https://lovable.dev).
+# CORE JOURNEY
 
-## Build with Lovable
+📍 **Location Access**
 
-Continue developing this project in the [Lovable editor](https://lovable.dev/projects/5cc8d0df-2596-46c7-ac57-b211f705c199).
+↓
 
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: every change made in Lovable is committed straight to this repository.
-- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
+🔎 **Find**
 
-## Development
+↓
 
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
+🏠 **Visit**
+
+↓
+
+🤝 **Agree**
+
+↓
+
+📄 **Rental Agreement**
+
+↓
+
+✍️ **Sign**
+
+↓
+
+🔑 **Move In**
+
+---
+
+# PRODUCT PRINCIPLES
+
+Room Renter should feel like a production-ready Indian rental startup rather than a traditional real-estate website.
+
+Prioritize:
+
+- Simplicity
+- Trust
+- Transparency
+- Location-based discovery
+- Fast communication
+- Verified users and properties
+- Responsive design
+- Secure interactions
+
+The application should dynamically adapt its property discovery experience according to the user's selected or detected location rather than relying on a hardcoded city.
+
+---
+
+# TECHNOLOGY
+
+The project is built as a modern web application using technologies including:
+
+- React
+- TypeScript
+- TanStack Router / Start
+- Supabase
+- Tailwind CSS
+- Leaflet / OpenStreetMap
+- Vite
+- Git & GitHub
+
+---
+
+# DEVELOPMENT
+
+## Prerequisites
+
+You need Node.js and npm installed.
+
+Clone the repository:
 
 ```sh
 git clone <this-repository-url>
+
 cd <repository-name>
-npm i
-npm run dev
-```
+
+npm install

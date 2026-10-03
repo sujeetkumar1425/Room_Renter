@@ -186,7 +186,7 @@ function EditPropertyPage() {
         room_type: form.roomType,
         bedrooms: Number(form.bedrooms) || 1,
         bathrooms: Number(form.bathrooms) || 1,
-        furnished: form.furnished,
+        furnished: form.furnished === "Fully Furnished",
         gender: form.gender,
         available: form.available,
         latitude,

@@ -4,12 +4,14 @@ import {
   Building2,
   CalendarDays,
   Check,
+  Clock3,
   Eye,
+  IndianRupee,
+  MapPin,
   MessageSquare,
   Pencil,
   Plus,
   Trash2,
-  Users,
   X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -187,57 +189,106 @@ function LandlordDashboard() {
 
   const name = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Landlord";
   const pendingBookings = bookings.filter((booking) => booking.status === "pending").length;
+  const listedRent = properties.reduce((total, property) => total + Number(property.rent || 0), 0);
 
   return (
     <Page>
       <div className="container-page pb-24 pt-6 sm:py-12">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-sm font-medium text-primary">Property Owner</p>
-            <h1 className="mt-1 break-words text-2xl font-bold tracking-tight sm:text-3xl">
-              Welcome, {name} 👋
-            </h1>
-            <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground sm:text-base">
-              Manage your properties, enquiries and bookings.
-            </p>
-          </div>
+        <div className="rounded-3xl bg-gradient-to-br from-primary/10 via-background to-warning/10 p-5 sm:p-8">
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.16em] text-primary">
+                Dashboard
+              </p>
+              <h1 className="mt-2 break-words text-3xl font-bold tracking-tight sm:text-4xl">
+                Welcome back, {name} 👋
+              </h1>
+              <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground sm:text-base">
+                Keep your properties, booking requests, and renter activity moving forward.
+              </p>
+            </div>
 
-          <Button asChild className="w-full rounded-xl sm:w-auto">
-            <Link to="/list-property">
-              <Plus className="mr-2 h-4 w-4" />
-              List a Property
-            </Link>
-          </Button>
+            <Button asChild className="w-full rounded-xl shadow-sm sm:w-auto">
+              <Link to="/list-property">
+                <Plus className="mr-2 h-4 w-4" />
+                List a Property
+              </Link>
+            </Button>
+          </div>
         </div>
 
-        <div className="mt-6 grid grid-cols-2 gap-3 sm:mt-8 sm:gap-4 lg:grid-cols-4">
+        <div className="mt-6 grid gap-3 sm:mt-8 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
           <StatCard
             icon={Building2}
-            title="My Properties"
+            title="Total Properties"
             value={String(propertyCount)}
             description="Properties listed"
+            accent="bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300"
           />
-          <StatCard icon={MessageSquare} title="Enquiries" value="0" description="New enquiries" />
           <StatCard
             icon={CalendarDays}
             title="Bookings"
             value={String(bookings.length)}
             description={`${pendingBookings} pending requests`}
+            accent="bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300"
           />
-          <StatCard icon={Users} title="Tenants" value="0" description="Active tenants" />
+          <StatCard
+            icon={Clock3}
+            title="Pending Requests"
+            value={String(pendingBookings)}
+            description="Need your response"
+            accent="bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
+          />
+          <StatCard
+            icon={IndianRupee}
+            title="Listed Rent"
+            value={`₹${listedRent.toLocaleString("en-IN")}`}
+            description="Combined monthly rent"
+            accent="bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+          />
         </div>
 
         <section className="mt-10">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h2 className="text-xl font-bold">My Properties</h2>
+              <p className="text-sm font-semibold uppercase tracking-[0.14em] text-primary">
+                Properties
+              </p>
+              <h2 className="mt-1 text-2xl font-bold tracking-tight">Manage your listings</h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                Manage the rooms and properties you have listed.
+                Keep track of your listed rooms and their availability.
               </p>
             </div>
+            <Button asChild className="w-full rounded-xl sm:w-auto">
+              <Link to="/list-property">
+                <Plus className="mr-2 h-4 w-4" />
+                List a Property
+              </Link>
+            </Button>
           </div>
 
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 sm:gap-4">
+          {properties.length > 0 ? (
+            <div className="mt-5 grid gap-3 sm:grid-cols-3">
+              <div className="rounded-2xl border border-border bg-card p-4">
+                <p className="text-sm text-muted-foreground">Total Properties</p>
+                <p className="mt-1 text-2xl font-bold">{properties.length}</p>
+              </div>
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 dark:border-emerald-900/60 dark:bg-emerald-950/20">
+                <p className="text-sm text-emerald-800 dark:text-emerald-300">Available</p>
+                <p className="mt-1 text-2xl font-bold text-emerald-900 dark:text-emerald-200">
+                  {properties.filter((property) => property.available).length}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-border bg-muted/40 p-4">
+                <p className="text-sm text-muted-foreground">Unavailable</p>
+                <p className="mt-1 text-2xl font-bold">
+                  {properties.filter((property) => !property.available).length}
+                </p>
+              </div>
+            </div>
+          ) : null}
+
+          <div className="mt-5 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
             {properties.length === 0 ? (
               <div className="rounded-2xl border border-border bg-card p-8 text-center sm:col-span-2">
                 <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
@@ -258,72 +309,68 @@ function LandlordDashboard() {
               properties.map((property) => (
                 <div
                   key={property.id}
-                  className="rounded-2xl border border-border bg-card p-4 sm:p-5"
+                  className="group overflow-hidden rounded-2xl border border-border bg-card shadow-[var(--shadow-soft)] transition-all hover:-translate-y-0.5 hover:shadow-[var(--shadow-card)]"
                 >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0">
-                      <h3 className="break-words font-semibold">
-                        {property.title || "Untitled property"}
-                      </h3>
-                      <p className="mt-1 text-sm text-muted-foreground">{property.city}</p>
-                      <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">
-                        {property.address}
-                      </p>
-                    </div>
-                    <Building2 className="h-5 w-5 shrink-0 text-primary" />
-                  </div>
-
-                  <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-4">
-                    <span className="font-semibold">
-                      ₹{Number(property.rent || 0).toLocaleString("en-IN")}/month
-                    </span>
-                    <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+                  <div className="relative flex h-44 items-center justify-center bg-gradient-to-br from-primary/10 via-accent/30 to-warning/10">
+                    <Building2 className="h-10 w-10 text-primary/60" />
+                    <span
+                      className={`absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${
+                        property.available
+                          ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300"
+                          : "bg-muted text-muted-foreground"
+                      }`}
+                    >
+                      {property.available ? <Check className="h-3.5 w-3.5" /> : null}
                       {property.available ? "Available" : "Unavailable"}
                     </span>
+                    <span className="absolute right-3 top-3 rounded-full bg-background/90 px-2.5 py-1 text-xs font-semibold text-muted-foreground">
+                      {property.available ? "Active listing" : "Needs attention"}
+                    </span>
                   </div>
 
-                  <div className="mt-4 grid grid-cols-3 gap-2">
-                    <Button
-                      asChild
-                      variant="outline"
-                      size="icon"
-                      className="h-9 w-full rounded-lg"
-                      title="View property"
-                    >
-                      <Link to="/property/$id" params={{ id: String(property.id) }}>
-                        <>
-                          <Eye className="h-4 w-4" />
-                          <span className="sr-only">View property</span>
-                        </>
-                      </Link>
-                    </Button>
-                    <Button
-                      asChild
-                      variant="outline"
-                      size="icon"
-                      className="h-9 w-full rounded-lg"
-                      title="Edit property"
-                    >
-                      <Link to="/edit-property" search={{ id: String(property.id) }}>
-                        <>
-                          <Pencil className="h-4 w-4" />
-                          <span className="sr-only">Edit property</span>
-                        </>
-                      </Link>
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="h-9 w-full rounded-lg text-destructive hover:text-destructive"
-                      title="Delete property"
-                      disabled={deletingId === property.id}
-                      onClick={() => void deleteProperty(property)}
-                    >
-                      <>
+                  <div className="p-4 sm:p-5">
+                    <h3 className="line-clamp-1 break-words text-lg font-bold">
+                      {property.title || "Untitled property"}
+                    </h3>
+                    <p className="mt-2 flex items-start gap-1.5 text-sm text-muted-foreground">
+                      <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                      <span className="line-clamp-2">
+                        {property.city || "Location not specified"}
+                        {property.address ? ` · ${property.address}` : ""}
+                      </span>
+                    </p>
+                    <div className="mt-5 flex items-center justify-between gap-3">
+                      <span className="font-semibold text-foreground">
+                        ₹{Number(property.rent || 0).toLocaleString("en-IN")}
+                        <span className="text-sm font-normal text-muted-foreground"> / month</span>
+                      </span>
+                      <span className="text-xs text-muted-foreground">Property listing</span>
+                    </div>
+
+                    <div className="mt-5 grid grid-cols-3 gap-2 border-t border-border pt-4">
+                      <Button asChild variant="outline" className="min-h-10 rounded-xl px-2">
+                        <Link to="/property/$id" params={{ id: String(property.id) }}>
+                          <Eye className="mr-1.5 h-4 w-4" />
+                          View
+                        </Link>
+                      </Button>
+                      <Button asChild variant="outline" className="min-h-10 rounded-xl px-2">
+                        <Link to="/edit-property" search={{ id: String(property.id) }}>
+                          <Pencil className="mr-1.5 h-4 w-4" />
+                          Edit
+                        </Link>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="min-h-10 rounded-xl px-3 text-destructive hover:text-destructive"
+                        title="Delete property"
+                        disabled={deletingId === property.id}
+                        onClick={() => void deleteProperty(property)}
+                      >
                         <Trash2 className="h-4 w-4" />
                         <span className="sr-only">Delete property</span>
-                      </>
-                    </Button>
+                      </Button>
+                    </div>
                   </div>
                 </div>
               ))
@@ -334,7 +381,10 @@ function LandlordDashboard() {
         <section className="mt-10">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className="text-xl font-bold">Booking Requests</h2>
+              <p className="text-sm font-semibold uppercase tracking-[0.14em] text-primary">
+                Activity
+              </p>
+              <h2 className="mt-1 text-2xl font-bold tracking-tight">Recent Requests</h2>
               <p className="mt-1 text-sm text-muted-foreground">
                 Requests from renters are updated here in real time.
               </p>
@@ -347,7 +397,7 @@ function LandlordDashboard() {
             </Button>
           </div>
 
-          <div className="mt-4 overflow-hidden rounded-2xl border border-border bg-card">
+          <div className="mt-5 overflow-hidden rounded-2xl border border-border bg-card shadow-[var(--shadow-soft)]">
             {loadingBookings ? (
               <div className="p-8 text-center text-sm text-muted-foreground">
                 Loading booking requests...
@@ -361,22 +411,29 @@ function LandlordDashboard() {
                 {bookings.slice(0, 8).map((booking) => (
                   <div
                     key={booking.id}
-                    className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5"
+                    className="flex flex-col gap-4 p-4 transition-colors hover:bg-muted/30 sm:flex-row sm:items-center sm:justify-between sm:p-5"
                   >
                     <div className="min-w-0">
-                      <p className="break-words font-semibold">
-                        {propertyTitle(booking.property_id)}
-                      </p>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        {formatBookingDate(booking.visit_date)} at{" "}
-                        {formatBookingTime(booking.visit_time)}
-                      </p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        Renter: {booking.renter_id.slice(0, 8)}…
-                      </p>
-                      {booking.notes ? (
-                        <p className="mt-2 text-sm text-muted-foreground">{booking.notes}</p>
-                      ) : null}
+                      <div className="flex items-start gap-3">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300">
+                          <CalendarDays className="h-5 w-5" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="break-words font-semibold">
+                            {propertyTitle(booking.property_id)}
+                          </p>
+                          <p className="mt-1 text-sm text-muted-foreground">
+                            {formatBookingDate(booking.visit_date)} at{" "}
+                            {formatBookingTime(booking.visit_time)}
+                          </p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            Renter ID: {booking.renter_id.slice(0, 8)}…
+                          </p>
+                          {booking.notes ? (
+                            <p className="mt-2 text-sm text-muted-foreground">{booking.notes}</p>
+                          ) : null}
+                        </div>
+                      </div>
                     </div>
 
                     <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
@@ -411,7 +468,10 @@ function LandlordDashboard() {
         </section>
 
         <section className="mt-8">
-          <h2 className="text-xl font-bold">Quick Actions</h2>
+          <p className="text-sm font-semibold uppercase tracking-[0.14em] text-primary">
+            Shortcuts
+          </p>
+          <h2 className="mt-1 text-2xl font-bold tracking-tight">Quick Actions</h2>
           <div className="mt-4 grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
             <ActionCard
               icon={Plus}
@@ -455,14 +515,16 @@ function formatBookingTime(value: string) {
 
 function BookingBadge({ status }: { status: string }) {
   const classes =
-    status === "approved"
+    status === "approved" || status === "confirmed"
       ? "bg-success/15 text-success"
-      : status === "rejected" || status === "cancelled"
-        ? "bg-destructive/10 text-destructive"
-        : "bg-warning/15 text-warning-foreground";
+      : status === "completed"
+        ? "bg-violet-100 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300"
+        : status === "rejected" || status === "cancelled"
+          ? "bg-destructive/10 text-destructive"
+          : "bg-warning/15 text-warning-foreground";
 
   return (
-    <span className={`rounded-full px-2.5 py-1 text-xs font-semibold capitalize ${classes}`}>
+    <span className={`rounded-full px-3 py-1 text-xs font-semibold capitalize ${classes}`}>
       {status}
     </span>
   );
@@ -473,19 +535,21 @@ function StatCard({
   title,
   value,
   description,
+  accent,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   title: string;
   value: string;
   description: string;
+  accent: string;
 }) {
   return (
-    <div className="rounded-2xl border border-border bg-card p-4 sm:p-5">
+    <div className="rounded-2xl border border-border bg-card p-4 shadow-[var(--shadow-soft)] sm:p-5">
       <div className="flex items-center justify-between">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
-          <Icon className="h-5 w-5 text-primary" />
+        <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${accent}`}>
+          <Icon className="h-5 w-5" />
         </div>
-        <span className="text-2xl font-bold">{value}</span>
+        <span className="text-2xl font-bold tracking-tight sm:text-3xl">{value}</span>
       </div>
       <h3 className="mt-4 break-words font-semibold">{title}</h3>
       <p className="mt-1 text-sm text-muted-foreground">{description}</p>
@@ -507,7 +571,7 @@ function ActionCard({
   return (
     <Link
       to={href}
-      className="group rounded-2xl border border-border bg-card p-4 transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-sm sm:p-5"
+      className="group rounded-2xl border border-border bg-card p-4 shadow-[var(--shadow-soft)] transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[var(--shadow-card)] sm:p-5"
     >
       <div className="flex items-start justify-between">
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">

@@ -11,7 +11,7 @@ type NotificationRow = {
   title: string;
   body: string | null;
   type: string;
-  read_at: string | null;
+  is_read: boolean;
   created_at: string;
 };
 
@@ -20,14 +20,22 @@ export const Route = createFileRoute("/notifications")({
     const {
       data: { session },
     } = await supabase.auth.getSession();
-    if (!session) throw redirect({ to: "/login" });
+
+    if (!session) {
+      throw redirect({ to: "/login" });
+    }
   },
+
   head: () => ({
     meta: [
       { title: "Notifications — Room Renter" },
-      { name: "description", content: "Your Room Renter notifications." },
+      {
+        name: "description",
+        content: "Your Room Renter notifications.",
+      },
     ],
   }),
+
   component: NotificationsPage,
 });
 
@@ -39,11 +47,15 @@ function NotificationsPage() {
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) return;
+
+    if (!user) {
+      setLoading(false);
+      return;
+    }
 
     const { data, error } = await supabase
       .from("notifications")
-      .select("id, title, body, type, read_at, created_at")
+      .select("id, title, body, type, is_read, created_at")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(50);
@@ -54,6 +66,7 @@ function NotificationsPage() {
     } else {
       setItems((data ?? []) as NotificationRow[]);
     }
+
     setLoading(false);
   };
 
@@ -64,8 +77,14 @@ function NotificationsPage() {
       .channel("room-renter-notifications")
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "notifications" },
-        () => void load(),
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "notifications",
+        },
+        () => {
+          void load();
+        },
       )
       .subscribe();
 
@@ -78,15 +97,51 @@ function NotificationsPage() {
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) return;
 
-    await supabase
+    if (!user) {
+      return;
+    }
+
+    const { error } = await supabase
       .from("notifications")
-      .update({ read_at: new Date().toISOString() })
+      .update({ is_read: true })
       .eq("user_id", user.id)
-      .is("read_at", null);
+      .eq("is_read", false);
+
+    if (error) {
+      console.error("Mark all notifications read:", error);
+      return;
+    }
 
     await load();
+  };
+
+  const markNotificationRead = async (notificationId: number) => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return;
+    }
+
+    const { error } = await supabase
+      .from("notifications")
+      .update({ is_read: true })
+      .eq("id", notificationId)
+      .eq("user_id", user.id)
+      .eq("is_read", false);
+
+    if (error) {
+      console.error("Mark notification read:", error);
+      return;
+    }
+
+    setItems((current) =>
+      current.map((notification) =>
+        notification.id === notificationId ? { ...notification, is_read: true } : notification,
+      ),
+    );
   };
 
   return (
@@ -97,16 +152,18 @@ function NotificationsPage() {
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10">
               <Bell className="h-5 w-5 text-primary" />
             </div>
+
             <div>
               <h1 className="text-3xl font-bold tracking-tight">Notifications</h1>
+
               <p className="mt-1 text-sm text-muted-foreground">
                 Messages, reviews and account activity.
               </p>
             </div>
           </div>
 
-          {items.some((item) => !item.read_at) && (
-            <Button variant="outline" className="rounded-xl" onClick={markAllRead}>
+          {items.some((item) => !item.is_read) && (
+            <Button variant="outline" className="rounded-xl" onClick={() => void markAllRead()}>
               <CheckCheck className="mr-2 h-4 w-4" />
               Mark all read
             </Button>
@@ -121,7 +178,9 @@ function NotificationsPage() {
         ) : items.length === 0 ? (
           <div className="card-surface mt-8 p-12 text-center">
             <Bell className="mx-auto h-8 w-8 text-muted-foreground" />
+
             <h2 className="mt-4 font-semibold">You're all caught up</h2>
+
             <p className="mt-1 text-sm text-muted-foreground">
               New messages and activity will appear here.
             </p>
@@ -131,36 +190,28 @@ function NotificationsPage() {
             {items.map((item) => (
               <button
                 key={item.id}
+                type="button"
                 className={`w-full rounded-2xl border p-4 text-left transition-colors ${
-                  item.read_at ? "border-border bg-card" : "border-primary/20 bg-primary/5"
+                  item.is_read ? "border-border bg-card" : "border-primary/20 bg-primary/5"
                 }`}
-                onClick={async () => {
-                  if (item.read_at) return;
-                  await supabase
-                    .from("notifications")
-                    .update({ read_at: new Date().toISOString() })
-                    .eq("id", item.id);
-                  setItems((current) =>
-                    current.map((notification) =>
-                      notification.id === item.id
-                        ? { ...notification, read_at: new Date().toISOString() }
-                        : notification,
-                    ),
-                  );
-                }}
+                onClick={() => void markNotificationRead(item.id)}
               >
                 <div className="flex items-start gap-3">
                   <span className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
                     <Bell className="h-4 w-4 text-primary" />
                   </span>
+
                   <div className="min-w-0 flex-1">
                     <p className="font-semibold">{item.title}</p>
+
                     {item.body && <p className="mt-1 text-sm text-muted-foreground">{item.body}</p>}
+
                     <p className="mt-2 text-xs text-muted-foreground">
                       {new Date(item.created_at).toLocaleString()}
                     </p>
                   </div>
-                  {!item.read_at && (
+
+                  {!item.is_read && (
                     <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-primary" />
                   )}
                 </div>

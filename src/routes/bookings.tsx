@@ -41,6 +41,7 @@ function BookingsPage() {
   const [properties, setProperties] = useState<PropertyLookup[]>([]);
   const [loading, setLoading] = useState(true);
   const [workingId, setWorkingId] = useState<number | null>(null);
+  const [filter, setFilter] = useState("all");
 
   const load = async () => {
     const {
@@ -121,6 +122,19 @@ function BookingsPage() {
     [properties],
   );
 
+  const filteredBookings = useMemo(() => {
+    if (filter === "all") return bookings;
+    if (filter === "upcoming") {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      return bookings.filter((booking) => {
+        const visitDate = new Date(`${booking.visit_date}T00:00:00`);
+        return booking.status === "approved" && visitDate >= today;
+      });
+    }
+    return bookings.filter((booking) => booking.status === filter);
+  }, [bookings, filter]);
+
   const updateStatus = async (id: number, status: "approved" | "rejected" | "cancelled") => {
     if (workingId !== null) return;
     setWorkingId(id);
@@ -160,6 +174,54 @@ function BookingsPage() {
             : "Track your room visit requests and their current status."}
         </p>
 
+        {role === "landlord" ? (
+          <div className="mt-6 overflow-x-auto pb-1 sm:mt-8">
+            <div
+              className="flex min-w-max gap-2"
+              role="tablist"
+              aria-label="Booking status filters"
+            >
+              {[
+                ["all", "All"],
+                ["pending", "Pending"],
+                ["approved", "Accepted"],
+                ["upcoming", "Upcoming"],
+                ["rejected", "Rejected"],
+                ["cancelled", "Cancelled"],
+              ].map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  role="tab"
+                  aria-selected={filter === value}
+                  onClick={() => setFilter(value)}
+                  className={`min-h-10 rounded-full px-4 text-sm font-semibold transition-colors ${
+                    filter === value
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "border border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground"
+                  }`}
+                >
+                  {label}
+                  <span className="ml-1.5 opacity-75">
+                    {value === "all"
+                      ? bookings.length
+                      : value === "upcoming"
+                        ? bookings.filter((booking) => {
+                            const today = new Date();
+                            today.setHours(0, 0, 0, 0);
+                            return (
+                              booking.status === "approved" &&
+                              new Date(`${booking.visit_date}T00:00:00`) >= today
+                            );
+                          }).length
+                        : bookings.filter((booking) => booking.status === value).length}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
         <div className="mt-6 space-y-4 sm:mt-8">
           {loading ? (
             <div className="rounded-2xl border border-border bg-card p-6 text-center text-sm text-muted-foreground sm:p-10">
@@ -185,21 +247,39 @@ function BookingsPage() {
                 </Button>
               ) : null}
             </div>
+          ) : filteredBookings.length === 0 ? (
+            <div className="rounded-2xl border border-border bg-card p-8 text-center">
+              <CalendarDays className="mx-auto h-10 w-10 text-primary" />
+              <h2 className="mt-4 font-semibold">
+                No {filter === "all" ? "" : filter === "upcoming" ? "upcoming " : `${filter} `}
+                bookings
+              </h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {filter === "pending"
+                  ? "New renter requests will appear here."
+                  : "There are no bookings in this category yet."}
+              </p>
+            </div>
           ) : (
-            bookings.map((booking) => {
+            filteredBookings.map((booking) => {
               const property = propertyMap.get(booking.property_id);
               return (
                 <article
                   key={booking.id}
-                  className="rounded-2xl border border-border bg-card p-4 sm:p-5"
+                  className="rounded-2xl border border-border bg-card p-4 shadow-[var(--shadow-soft)] transition-shadow hover:shadow-[var(--shadow-card)] sm:p-5"
                 >
                   <div className="flex flex-col gap-4 sm:gap-5 lg:flex-row lg:items-center lg:justify-between">
                     <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <Home className="h-5 w-5 shrink-0 text-primary" />
-                        <h2 className="min-w-0 break-words font-semibold">
-                          {property?.title || `Property #${booking.property_id}`}
-                        </h2>
+                      <div className="flex items-start gap-3">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                          <Home className="h-5 w-5" />
+                        </div>
+                        <div className="min-w-0">
+                          <h2 className="min-w-0 break-words font-semibold">
+                            {property?.title || `Property #${booking.property_id}`}
+                          </h2>
+                          <StatusBadge status={booking.status} />
+                        </div>
                       </div>
 
                       {property?.address ? (
@@ -231,8 +311,6 @@ function BookingsPage() {
                     </div>
 
                     <div className="flex w-full flex-wrap items-center gap-2 lg:w-auto lg:justify-end">
-                      <StatusBadge status={booking.status} />
-
                       {role === "landlord" && booking.status === "pending" ? (
                         <>
                           <Button

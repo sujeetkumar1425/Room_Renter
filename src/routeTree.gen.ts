@@ -15,6 +15,7 @@ import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as EditPropertyRouteImport } from './routes/edit-property'
 import { Route as HowItWorksRouteImport } from './routes/how-it-works'
 import { Route as LandlordRouteImport } from './routes/landlord'
+import { Route as LandlordProfileRouteImport } from './routes/landlord-profile'
 import { Route as ListPropertyRouteImport } from './routes/list-property'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as MessagesRouteImport } from './routes/messages'
@@ -52,6 +53,11 @@ const HowItWorksRoute = HowItWorksRouteImport.update({
 const LandlordRoute = LandlordRouteImport.update({
   id: '/landlord',
   path: '/landlord',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LandlordProfileRoute = LandlordProfileRouteImport.update({
+  id: '/landlord-profile',
+  path: '/landlord-profile',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ListPropertyRoute = ListPropertyRouteImport.update({
@@ -102,6 +108,7 @@ export interface FileRoutesByFullPath {
   '/edit-property': typeof EditPropertyRoute
   '/how-it-works': typeof HowItWorksRoute
   '/landlord': typeof LandlordRoute
+  '/landlord-profile': typeof LandlordProfileRoute
   '/list-property': typeof ListPropertyRoute
   '/login': typeof LoginRoute
   '/messages': typeof MessagesRoute
@@ -118,6 +125,7 @@ export interface FileRoutesByTo {
   '/edit-property': typeof EditPropertyRoute
   '/how-it-works': typeof HowItWorksRoute
   '/landlord': typeof LandlordRoute
+  '/landlord-profile': typeof LandlordProfileRoute
   '/list-property': typeof ListPropertyRoute
   '/login': typeof LoginRoute
   '/messages': typeof MessagesRoute
@@ -135,6 +143,7 @@ export interface FileRoutesById {
   '/edit-property': typeof EditPropertyRoute
   '/how-it-works': typeof HowItWorksRoute
   '/landlord': typeof LandlordRoute
+  '/landlord-profile': typeof LandlordProfileRoute
   '/list-property': typeof ListPropertyRoute
   '/login': typeof LoginRoute
   '/messages': typeof MessagesRoute
@@ -153,6 +162,7 @@ export interface FileRouteTypes {
     | '/edit-property'
     | '/how-it-works'
     | '/landlord'
+    | '/landlord-profile'
     | '/list-property'
     | '/login'
     | '/messages'
@@ -169,6 +179,7 @@ export interface FileRouteTypes {
     | '/edit-property'
     | '/how-it-works'
     | '/landlord'
+    | '/landlord-profile'
     | '/list-property'
     | '/login'
     | '/messages'
@@ -185,6 +196,7 @@ export interface FileRouteTypes {
     | '/edit-property'
     | '/how-it-works'
     | '/landlord'
+    | '/landlord-profile'
     | '/list-property'
     | '/login'
     | '/messages'
@@ -202,6 +214,7 @@ export interface RootRouteChildren {
   EditPropertyRoute: typeof EditPropertyRoute
   HowItWorksRoute: typeof HowItWorksRoute
   LandlordRoute: typeof LandlordRoute
+  LandlordProfileRoute: typeof LandlordProfileRoute
   ListPropertyRoute: typeof ListPropertyRoute
   LoginRoute: typeof LoginRoute
   MessagesRoute: typeof MessagesRoute
@@ -254,6 +267,13 @@ declare module '@tanstack/react-router' {
       path: '/landlord'
       fullPath: '/landlord'
       preLoaderRoute: typeof LandlordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/landlord-profile': {
+      id: '/landlord-profile'
+      path: '/landlord-profile'
+      fullPath: '/landlord-profile'
+      preLoaderRoute: typeof LandlordProfileRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/list-property': {
@@ -322,6 +342,7 @@ const rootRouteChildren: RootRouteChildren = {
   EditPropertyRoute: EditPropertyRoute,
   HowItWorksRoute: HowItWorksRoute,
   LandlordRoute: LandlordRoute,
+  LandlordProfileRoute: LandlordProfileRoute,
   ListPropertyRoute: ListPropertyRoute,
   LoginRoute: LoginRoute,
   MessagesRoute: MessagesRoute,

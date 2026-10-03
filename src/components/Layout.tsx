@@ -1,14 +1,15 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   Home,
-  Search,
   Heart,
   MessageSquare,
   User as UserIcon,
   MapPin,
   Menu,
+  X,
   Bell,
   Building2,
+  CalendarDays,
   LogOut,
   LayoutDashboard,
 } from "lucide-react";
@@ -68,6 +69,146 @@ const navLinks = [
   },
 ] as const;
 
+type NavigationItem = {
+  to: string;
+  label: string;
+  icon: typeof Home;
+  search?: {
+    propertyId: undefined;
+    landlordId: undefined;
+  };
+};
+
+function DashboardSidebar({
+  isLandlord,
+  displayName,
+  userEmail,
+  onLogout,
+  open,
+  onClose,
+}: {
+  isLandlord: boolean;
+  displayName: string;
+  userEmail?: string;
+  onLogout: () => void;
+  open: boolean;
+  onClose: () => void;
+}) {
+  const pathname = useRouterState({
+    select: (s) => s.location.pathname,
+  });
+
+  const items: NavigationItem[] = [
+    {
+      to: isLandlord ? "/landlord" : "/dashboard",
+      label: "Dashboard",
+      icon: LayoutDashboard,
+    },
+    {
+      to: "/search",
+      label: "Properties",
+      icon: Building2,
+    },
+    {
+      to: "/bookings",
+      label: "Bookings",
+      icon: CalendarDays,
+    },
+    {
+      to: "/messages",
+      label: "Messages",
+      icon: MessageSquare,
+      search: { propertyId: undefined, landlordId: undefined },
+    },
+    {
+      to: isLandlord ? "/landlord-profile" : "/dashboard",
+      label: "Profile",
+      icon: UserIcon,
+    },
+  ];
+
+  return (
+    <>
+      {open ? (
+        <button
+          type="button"
+          aria-label="Close navigation"
+          onClick={onClose}
+          className="fixed inset-0 z-40 hidden bg-foreground/20 backdrop-blur-[1px] lg:block"
+        />
+      ) : null}
+
+      <aside
+        className={cn(
+          "fixed inset-y-0 left-0 z-50 hidden w-64 border-r border-border bg-card/95 px-4 py-6 shadow-[var(--shadow-soft)] backdrop-blur transition-transform duration-200 ease-out lg:flex lg:flex-col",
+          open ? "translate-x-0" : "-translate-x-full",
+        )}
+        aria-hidden={!open}
+      >
+        <Logo />
+
+        <div className="mt-10 flex items-center gap-3 rounded-2xl bg-primary/10 p-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+            <UserIcon className="h-5 w-5" />
+          </span>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold">{displayName}</p>
+            <p className="truncate text-xs text-muted-foreground">
+              {isLandlord ? "Property Owner" : "Room Seeker"}
+            </p>
+          </div>
+        </div>
+
+        <nav className="mt-8 flex flex-1 flex-col gap-1" aria-label="Dashboard navigation">
+          {items.map((item) => {
+            const active =
+              item.to === (isLandlord ? "/landlord" : "/dashboard")
+                ? pathname === item.to
+                : pathname.startsWith(item.to);
+
+            return (
+              <Link
+                key={`${item.label}-${item.to}`}
+                to={item.to}
+                search={item.search}
+                onClick={onClose}
+                className={cn(
+                  "flex min-h-11 items-center gap-3 rounded-xl px-3.5 text-sm font-semibold transition-colors",
+                  active
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                )}
+                activeOptions={{ exact: item.label === "Dashboard" || item.label === "Profile" }}
+                aria-current={active ? "page" : undefined}
+              >
+                <item.icon className="h-[18px] w-[18px]" />
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
+
+        <div className="border-t border-border pt-4">
+          {userEmail ? (
+            <p className="truncate px-3 text-xs text-muted-foreground">{userEmail}</p>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => {
+              onClose();
+              onLogout();
+            }}
+            className="mt-3 flex min-h-11 w-full items-center gap-3 rounded-xl px-3.5 text-sm font-semibold text-destructive transition-colors hover:bg-destructive/10"
+          >
+            <LogOut className="h-[18px] w-[18px]" />
+            Logout
+          </button>
+        </div>
+      </aside>
+    </>
+  );
+}
+
 /* =========================================================
    NOTIFICATIONS
 ========================================================= */
@@ -97,6 +238,7 @@ function CityPill() {
 
 export function Header() {
   const [user, setUser] = useState<SupabaseUser | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const [profile, setProfile] = useState<{
     full_name: string | null;
@@ -229,310 +371,338 @@ export function Header() {
   ------------------------------------------------------- */
 
   const dashboardRoute = isLandlord ? "/landlord" : "/dashboard";
+  const profileRoute = isLandlord ? "/landlord-profile" : "/dashboard";
 
   const dashboardLabel = isLandlord ? "Landlord Dashboard" : "My Dashboard";
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border/70 bg-background/85 backdrop-blur-md">
-      <div className="container-page flex h-16 items-center justify-between gap-4">
-        {/* =================================================
+    <>
+      {user && !authLoading ? (
+        <DashboardSidebar
+          isLandlord={isLandlord}
+          displayName={displayName}
+          userEmail={user.email}
+          onLogout={() => void handleLogout()}
+          open={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+        />
+      ) : null}
+
+      <header className="sticky top-0 z-40 border-b border-border/70 bg-background/85 backdrop-blur-md">
+        <div className="container-page flex h-16 items-center justify-between gap-4">
+          {/* =================================================
             LEFT SIDE
         ================================================= */}
 
-        <div className="flex items-center gap-6">
-          <Logo />
+          <div className="flex items-center gap-3 sm:gap-6">
+            {user && !authLoading ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="hidden rounded-xl lg:inline-flex"
+                aria-label={sidebarOpen ? "Close navigation" : "Open navigation"}
+                aria-expanded={sidebarOpen}
+                onClick={() => setSidebarOpen((open) => !open)}
+              >
+                {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              </Button>
+            ) : null}
 
-          {/* DESKTOP NAVIGATION */}
+            <Logo />
 
-          <nav className="hidden items-center gap-1 lg:flex">
-            {navLinks.map((link) => {
-              // Hide "List Your Property" only for renters
-              if (link.to === "/list-property" && profile?.role === "renter") {
-                return null;
-              }
+            {/* DESKTOP NAVIGATION */}
 
-              return (
-                <Link
-                  key={link.to}
-                  to={link.to}
-                  className="rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                  activeProps={{
-                    className: "text-foreground bg-muted",
-                  }}
-                >
-                  {link.label}
-                </Link>
-              );
-            })}
-          </nav>
-        </div>
+            <nav className={cn("hidden items-center gap-1", !user && "lg:flex")}>
+              {navLinks.map((link) => {
+                // Hide "List Your Property" only for renters
+                if (link.to === "/list-property" && profile?.role === "renter") {
+                  return null;
+                }
 
-        {/* =================================================
+                return (
+                  <Link
+                    key={link.to}
+                    to={link.to}
+                    className="rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    activeProps={{
+                      className: "text-foreground bg-muted",
+                    }}
+                  >
+                    {link.label}
+                  </Link>
+                );
+              })}
+            </nav>
+          </div>
+
+          {/* =================================================
             RIGHT SIDE
         ================================================= */}
 
-        <div className="flex items-center gap-2">
-          {/* CITY */}
+          <div className="flex items-center gap-2">
+            {/* CITY */}
 
-          <div className="hidden sm:block">
-            <CityPill />
-          </div>
+            <div className="hidden sm:block">
+              <CityPill />
+            </div>
 
-          {/* =================================================
+            {/* =================================================
               NOTIFICATIONS
           ================================================= */}
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="relative rounded-full">
-                <Bell className="h-[18px] w-[18px]" />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="relative rounded-full">
+                  <Bell className="h-[18px] w-[18px]" />
 
-                {notificationCount > 0 && (
-                  <span className="absolute -right-1 -top-1 flex min-h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-bold text-destructive-foreground">
-                    {notificationCount > 9 ? "9+" : notificationCount}
-                  </span>
-                )}
-              </Button>
-            </DropdownMenuTrigger>
-
-            <DropdownMenuContent align="end" className="w-80 rounded-2xl">
-              <DropdownMenuLabel>Notifications</DropdownMenuLabel>
-
-              <DropdownMenuSeparator />
-
-              <DropdownMenuItem asChild>
-                <Link to="/notifications" className="cursor-pointer rounded-xl py-3">
-                  <Bell className="mr-2 h-4 w-4" />
-                  Open all notifications
                   {notificationCount > 0 && (
-                    <span className="ml-auto text-xs text-muted-foreground">
-                      {notificationCount} unread
+                    <span className="absolute -right-1 -top-1 flex min-h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-bold text-destructive-foreground">
+                      {notificationCount > 9 ? "9+" : notificationCount}
                     </span>
                   )}
-                </Link>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                </Button>
+              </DropdownMenuTrigger>
 
-          {/* =================================================
+              <DropdownMenuContent align="end" className="w-80 rounded-2xl">
+                <DropdownMenuLabel>Notifications</DropdownMenuLabel>
+
+                <DropdownMenuSeparator />
+
+                <DropdownMenuItem asChild>
+                  <Link to="/notifications" className="cursor-pointer rounded-xl py-3">
+                    <Bell className="mr-2 h-4 w-4" />
+                    Open all notifications
+                    {notificationCount > 0 && (
+                      <span className="ml-auto text-xs text-muted-foreground">
+                        {notificationCount} unread
+                      </span>
+                    )}
+                  </Link>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* =================================================
               DESKTOP AUTH
           ================================================= */}
 
-          <div className="hidden items-center gap-2 md:flex">
-            {authLoading ? (
-              /* LOADING */
+            <div className="hidden items-center gap-2 md:flex">
+              {authLoading ? (
+                /* LOADING */
 
-              <div className="h-9 w-20 animate-pulse rounded-xl bg-muted" />
-            ) : user ? (
-              /* =================================================
+                <div className="h-9 w-20 animate-pulse rounded-xl bg-muted" />
+              ) : user ? (
+                /* =================================================
                  LOGGED IN
               ================================================= */
 
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="flex items-center gap-2 rounded-xl px-3">
-                    {/* PROFILE ICON */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="flex items-center gap-2 rounded-xl px-3">
+                      {/* PROFILE ICON */}
 
-                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                      <UserIcon className="h-4 w-4" />
-                    </span>
-
-                    {/* USER NAME */}
-
-                    <span className="max-w-[120px] truncate font-medium">{displayName}</span>
-                  </Button>
-                </DropdownMenuTrigger>
-
-                <DropdownMenuContent align="end" className="w-60 rounded-2xl">
-                  {/* USER INFO */}
-
-                  <DropdownMenuLabel>
-                    <div className="flex flex-col">
-                      <span className="font-semibold">{displayName}</span>
-
-                      <span className="mt-1 truncate text-xs font-normal text-muted-foreground">
-                        {user.email}
+                      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                        <UserIcon className="h-4 w-4" />
                       </span>
 
-                      <span className="mt-1 text-xs capitalize text-primary">
-                        {isLandlord ? "Property Owner" : "Room Seeker"}
-                      </span>
-                    </div>
-                  </DropdownMenuLabel>
+                      {/* USER NAME */}
 
-                  <DropdownMenuSeparator />
+                      <span className="max-w-[120px] truncate font-medium">{displayName}</span>
+                    </Button>
+                  </DropdownMenuTrigger>
 
-                  {/* =================================================
+                  <DropdownMenuContent align="end" className="w-60 rounded-2xl">
+                    {/* USER INFO */}
+
+                    <DropdownMenuLabel>
+                      <div className="flex flex-col">
+                        <span className="font-semibold">{displayName}</span>
+
+                        <span className="mt-1 truncate text-xs font-normal text-muted-foreground">
+                          {user.email}
+                        </span>
+
+                        <span className="mt-1 text-xs capitalize text-primary">
+                          {isLandlord ? "Property Owner" : "Room Seeker"}
+                        </span>
+                      </div>
+                    </DropdownMenuLabel>
+
+                    <DropdownMenuSeparator />
+
+                    {/* =================================================
                       ROLE-SPECIFIC DASHBOARD
                   ================================================= */}
 
-                  <DropdownMenuItem asChild>
-                    <Link to={dashboardRoute} className="cursor-pointer">
-                      <LayoutDashboard className="mr-2 h-4 w-4" />
+                    <DropdownMenuItem asChild>
+                      <Link to={dashboardRoute} className="cursor-pointer">
+                        <LayoutDashboard className="mr-2 h-4 w-4" />
 
-                      {dashboardLabel}
-                    </Link>
-                  </DropdownMenuItem>
+                        {dashboardLabel}
+                      </Link>
+                    </DropdownMenuItem>
 
-                  <DropdownMenuSeparator />
-
-                  {/* LOGOUT */}
-
-                  <DropdownMenuItem
-                    onClick={handleLogout}
-                    className="cursor-pointer text-destructive focus:text-destructive"
-                  >
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Logout
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : (
-              /* =================================================
-                 LOGGED OUT
-              ================================================= */
-
-              <>
-                <Button asChild variant="ghost" className="rounded-xl">
-                  <Link to="/login">Login</Link>
-                </Button>
-
-                <Button asChild className="rounded-xl">
-                  <Link to="/signup">Sign Up</Link>
-                </Button>
-              </>
-            )}
-          </div>
-
-          {/* =================================================
-              MOBILE MENU
-          ================================================= */}
-
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="rounded-full lg:hidden">
-                <Menu className="h-5 w-5" />
-              </Button>
-            </SheetTrigger>
-
-            <SheetContent side="right" className="w-72 p-6">
-              <div className="mt-6 flex flex-col gap-1">
-                {/* LOCATION */}
-
-                <div className="mb-2">
-                  <CityPill />
-                </div>
-
-                {/* NAVIGATION */}
-
-                {navLinks.map((link) => {
-                  if (link.to === "/list-property" && profile?.role === "renter") {
-                    return null;
-                  }
-
-                  return (
-                    <Link
-                      key={link.to}
-                      to={link.to}
-                      className="rounded-xl px-3 py-2.5 font-medium hover:bg-muted"
-                    >
-                      {link.label}
-                    </Link>
-                  );
-                })}
-
-                {/* =================================================
-                    MOBILE LOGGED IN
-                ================================================= */}
-
-                {user ? (
-                  <>
-                    <div className="my-3 border-t border-border" />
-
-                    {/* USER INFO */}
-
-                    <div className="px-3 py-2">
-                      <p className="font-semibold">{displayName}</p>
-
-                      <p className="text-xs text-muted-foreground">{user.email}</p>
-
-                      <p className="mt-1 text-xs capitalize text-primary">
-                        {isLandlord ? "Property Owner" : "Room Seeker"}
-                      </p>
-                    </div>
-
-                    <Link
-                      to="/saved"
-                      className="flex items-center gap-2 rounded-xl px-3 py-2.5 font-medium hover:bg-muted"
-                    >
-                      <Heart className="h-4 w-4" />
-                      Saved Rooms
-                    </Link>
-
-                    <Link
-                      to="/messages"
-                      search={{ propertyId: undefined, landlordId: undefined }}
-                      className="flex items-center gap-2 rounded-xl px-3 py-2.5 font-medium hover:bg-muted"
-                    >
-                      <MessageSquare className="h-4 w-4" />
-                      Messages
-                    </Link>
-
-                    <Link
-                      to="/notifications"
-                      className="flex items-center gap-2 rounded-xl px-3 py-2.5 font-medium hover:bg-muted"
-                    >
-                      <Bell className="h-4 w-4" />
-                      Notifications
-                      {notificationCount > 0 && (
-                        <span className="ml-auto rounded-full bg-destructive px-1.5 py-0.5 text-[10px] font-bold text-destructive-foreground">
-                          {notificationCount}
-                        </span>
-                      )}
-                    </Link>
-
-                    {/* ROLE-SPECIFIC DASHBOARD */}
-
-                    <Link
-                      to={dashboardRoute}
-                      className="flex items-center gap-2 rounded-xl px-3 py-2.5 font-medium hover:bg-muted"
-                    >
-                      <LayoutDashboard className="h-4 w-4" />
-
-                      {dashboardLabel}
-                    </Link>
+                    <DropdownMenuSeparator />
 
                     {/* LOGOUT */}
 
-                    <button
+                    <DropdownMenuItem
                       onClick={handleLogout}
-                      className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-left font-medium text-destructive hover:bg-muted"
+                      className="cursor-pointer text-destructive focus:text-destructive"
                     >
-                      <LogOut className="h-4 w-4" />
+                      <LogOut className="mr-2 h-4 w-4" />
                       Logout
-                    </button>
-                  </>
-                ) : (
-                  /* =================================================
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                /* =================================================
+                 LOGGED OUT
+              ================================================= */
+
+                <>
+                  <Button asChild variant="ghost" className="rounded-xl">
+                    <Link to="/login">Login</Link>
+                  </Button>
+
+                  <Button asChild className="rounded-xl">
+                    <Link to="/signup">Sign Up</Link>
+                  </Button>
+                </>
+              )}
+            </div>
+
+            {/* =================================================
+              MOBILE MENU
+          ================================================= */}
+
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="rounded-full lg:hidden">
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </SheetTrigger>
+
+              <SheetContent side="right" className="w-72 p-6">
+                <div className="mt-6 flex flex-col gap-1">
+                  {/* LOCATION */}
+
+                  <div className="mb-2">
+                    <CityPill />
+                  </div>
+
+                  {/* NAVIGATION */}
+
+                  {navLinks.map((link) => {
+                    if (link.to === "/list-property" && profile?.role === "renter") {
+                      return null;
+                    }
+
+                    return (
+                      <Link
+                        key={link.to}
+                        to={link.to}
+                        className="rounded-xl px-3 py-2.5 font-medium hover:bg-muted"
+                      >
+                        {link.label}
+                      </Link>
+                    );
+                  })}
+
+                  {/* =================================================
+                    MOBILE LOGGED IN
+                ================================================= */}
+
+                  {user ? (
+                    <>
+                      <div className="my-3 border-t border-border" />
+
+                      {/* USER INFO */}
+
+                      <div className="px-3 py-2">
+                        <p className="font-semibold">{displayName}</p>
+
+                        <p className="text-xs text-muted-foreground">{user.email}</p>
+
+                        <p className="mt-1 text-xs capitalize text-primary">
+                          {isLandlord ? "Property Owner" : "Room Seeker"}
+                        </p>
+                      </div>
+
+                      <Link
+                        to="/saved"
+                        className="flex items-center gap-2 rounded-xl px-3 py-2.5 font-medium hover:bg-muted"
+                      >
+                        <Heart className="h-4 w-4" />
+                        Saved Rooms
+                      </Link>
+
+                      <Link
+                        to="/messages"
+                        search={{ propertyId: undefined, landlordId: undefined }}
+                        className="flex items-center gap-2 rounded-xl px-3 py-2.5 font-medium hover:bg-muted"
+                      >
+                        <MessageSquare className="h-4 w-4" />
+                        Messages
+                      </Link>
+
+                      <Link
+                        to="/notifications"
+                        className="flex items-center gap-2 rounded-xl px-3 py-2.5 font-medium hover:bg-muted"
+                      >
+                        <Bell className="h-4 w-4" />
+                        Notifications
+                        {notificationCount > 0 && (
+                          <span className="ml-auto rounded-full bg-destructive px-1.5 py-0.5 text-[10px] font-bold text-destructive-foreground">
+                            {notificationCount}
+                          </span>
+                        )}
+                      </Link>
+
+                      {/* ROLE-SPECIFIC DASHBOARD */}
+
+                      <Link
+                        to={dashboardRoute}
+                        className="flex items-center gap-2 rounded-xl px-3 py-2.5 font-medium hover:bg-muted"
+                      >
+                        <LayoutDashboard className="h-4 w-4" />
+
+                        {dashboardLabel}
+                      </Link>
+
+                      {/* LOGOUT */}
+
+                      <button
+                        onClick={handleLogout}
+                        className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-left font-medium text-destructive hover:bg-muted"
+                      >
+                        <LogOut className="h-4 w-4" />
+                        Logout
+                      </button>
+                    </>
+                  ) : (
+                    /* =================================================
                      MOBILE LOGGED OUT
                   ================================================= */
 
-                  <div className="mt-4 flex flex-col gap-2">
-                    <Button asChild variant="outline" className="rounded-xl">
-                      <Link to="/login">Login</Link>
-                    </Button>
+                    <div className="mt-4 flex flex-col gap-2">
+                      <Button asChild variant="outline" className="rounded-xl">
+                        <Link to="/login">Login</Link>
+                      </Button>
 
-                    <Button asChild className="rounded-xl">
-                      <Link to="/signup">Sign Up</Link>
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </SheetContent>
-          </Sheet>
+                      <Button asChild className="rounded-xl">
+                        <Link to="/signup">Sign Up</Link>
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </SheetContent>
+            </Sheet>
+          </div>
         </div>
-      </div>
-    </header>
+      </header>
+    </>
   );
 }
 
@@ -542,19 +712,19 @@ export function Header() {
 
 const bottomNav = [
   {
-    to: "/",
-    label: "Home",
-    icon: Home,
+    to: "/dashboard",
+    label: "Dashboard",
+    icon: LayoutDashboard,
   },
   {
     to: "/search",
-    label: "Search",
-    icon: Search,
+    label: "Properties",
+    icon: Building2,
   },
   {
-    to: "/saved",
-    label: "Saved",
-    icon: Heart,
+    to: "/bookings",
+    label: "Bookings",
+    icon: CalendarDays,
   },
   {
     to: "/messages",
@@ -574,22 +744,34 @@ export function BottomNav() {
   });
   const { role } = useApp();
 
-  const profileRoute = role === "landlord" ? "/landlord" : "/dashboard";
+  const dashboardRoute = role === "landlord" ? "/landlord" : "/dashboard";
+  const profileRoute = role === "landlord" ? "/landlord-profile" : "/dashboard";
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur-md md:hidden">
+    <nav className="fixed inset-x-3 bottom-3 z-40 rounded-2xl border border-border bg-card/95 shadow-[var(--shadow-float)] backdrop-blur-md lg:hidden">
       <div className="flex items-stretch justify-around px-1 pb-[env(safe-area-inset-bottom)]">
         {bottomNav.map((item) => {
-          const target = item.label === "Profile" ? profileRoute : item.to;
-          const active = target === "/" ? pathname === "/" : pathname.startsWith(target);
+          const target =
+            item.label === "Dashboard"
+              ? dashboardRoute
+              : item.label === "Profile"
+                ? profileRoute
+                : item.to;
+          const active =
+            item.label === "Dashboard" ? pathname === target : pathname.startsWith(target);
 
           return (
             <Link
-              key={item.to}
+              key={item.label}
               to={target}
+              search={
+                item.label === "Messages"
+                  ? { propertyId: undefined, landlordId: undefined }
+                  : undefined
+              }
               className={cn(
-                "flex flex-1 flex-col items-center gap-1 py-2.5 text-[11px] font-medium transition-colors",
-                active ? "text-primary" : "text-muted-foreground",
+                "flex min-h-14 flex-1 flex-col items-center justify-center gap-1 rounded-xl text-[10px] font-semibold transition-colors sm:text-[11px]",
+                active ? "bg-primary/10 text-primary" : "text-muted-foreground",
               )}
             >
               <item.icon className={cn("h-5 w-5", active && "fill-primary/10")} />
@@ -610,7 +792,7 @@ export function BottomNav() {
 export function Footer() {
   const { role, city } = useApp();
   return (
-    <footer className="mt-16 border-t border-border bg-surface">
+    <footer className="mt-16 hidden border-t border-border bg-surface lg:block">
       <div className="container-page grid gap-8 py-12 sm:grid-cols-2 lg:grid-cols-4">
         {/* BRAND */}
 
@@ -698,11 +880,13 @@ export function Footer() {
 ========================================================= */
 
 export function Page({ children, footer = true }: { children: ReactNode; footer?: boolean }) {
+  const { user } = useApp();
+
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <Header />
 
-      <main className="flex-1 pb-20 md:pb-0">{children}</main>
+      <main className="flex-1 pb-24 lg:pb-0">{children}</main>
 
       {footer && <Footer />}
 

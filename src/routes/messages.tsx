@@ -14,6 +14,7 @@ type MessageRow = {
   property_id: number | null;
   message: string;
   created_at: string;
+  read_at: string | null;
 };
 
 type Conversation = {
@@ -22,6 +23,7 @@ type Conversation = {
   other_user_id: string;
   last_message: string;
   updated_at: string;
+  unread_count: number;
 };
 
 type Profile = {
@@ -33,12 +35,14 @@ type Profile = {
 type Property = {
   id: number;
   title: string | null;
+  city: string | null;
+  address: string | null;
+  rent: number | string | null;
 };
 
 export const Route = createFileRoute("/messages")({
   validateSearch: (search: Record<string, unknown>) => ({
     propertyId: typeof search.propertyId === "string" ? search.propertyId : undefined,
-
     landlordId: typeof search.landlordId === "string" ? search.landlordId : undefined,
   }),
 
@@ -75,23 +79,14 @@ function MessagesPage() {
   const search = Route.useSearch();
 
   const [userId, setUserId] = useState<string | null>(null);
-
   const [conversations, setConversations] = useState<Conversation[]>([]);
-
   const [profiles, setProfiles] = useState<Record<string, Profile>>({});
-
   const [properties, setProperties] = useState<Record<number, Property>>({});
-
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
-
   const [messages, setMessages] = useState<MessageRow[]>([]);
-
   const [text, setText] = useState("");
-
   const [loadingConversations, setLoadingConversations] = useState(true);
-
   const [loadingMessages, setLoadingMessages] = useState(false);
-
   const [sending, setSending] = useState(false);
 
   /*
@@ -237,7 +232,7 @@ function MessagesPage() {
        */
       const { data, error } = await supabase
         .from("messages")
-        .select("id, sender_id, receiver_id, property_id, message, created_at")
+        .select("id, sender_id, receiver_id, property_id, message, created_at, read_at")
         .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
         .order("created_at", {
           ascending: false,
@@ -276,7 +271,14 @@ function MessagesPage() {
             other_user_id: otherUserId,
             last_message: row.message,
             updated_at: row.created_at,
+            unread_count: row.sender_id === user.id || row.read_at ? 0 : 1,
           });
+        } else if (row.sender_id !== user.id && !row.read_at) {
+          const conversation = grouped.get(key);
+
+          if (conversation) {
+            conversation.unread_count += 1;
+          }
         }
       }
 
@@ -345,7 +347,7 @@ function MessagesPage() {
       if (propertyIds.length > 0) {
         const { data: propertyData, error: propertyError } = await supabase
           .from("properties")
-          .select("id, title")
+          .select("id, title, city, address, rent")
           .in("id", propertyIds);
 
         if (propertyError) {
@@ -398,7 +400,7 @@ function MessagesPage() {
       try {
         const { data, error } = await supabase
           .from("messages")
-          .select("id, sender_id, receiver_id, property_id, message, created_at")
+          .select("id, sender_id, receiver_id, property_id, message, created_at, read_at")
           .eq("property_id", propertyId)
           .order("created_at", {
             ascending: true,
@@ -422,11 +424,101 @@ function MessagesPage() {
         );
 
         setMessages(conversationMessages);
+
+        /*
+         * Find unread messages received by
+         * the currently logged-in user.
+         */
+        const unreadIncoming = conversationMessages.filter(
+          (message) => message.receiver_id === userId && !message.read_at,
+        );
+
+        if (unreadIncoming.length > 0) {
+          const readAt = new Date().toISOString();
+
+          /*
+           * Mark the actual messages as read.
+           */
+          const { error: readError } = await supabase
+            .from("messages")
+            .update({ read_at: readAt })
+            .in(
+              "id",
+              unreadIncoming.map((message) => message.id),
+            )
+            .eq("receiver_id", userId);
+
+          if (readError) {
+            console.error("Mark messages read:", readError);
+          } else {
+            /*
+             * Update local message state.
+             */
+            setMessages((current) =>
+              current.map((message) =>
+                unreadIncoming.some((unread) => unread.id === message.id)
+                  ? { ...message, read_at: readAt }
+                  : message,
+              ),
+            );
+
+            /*
+             * Remove unread count from the
+             * selected conversation.
+             */
+            setConversations((current) =>
+              current.map((conversation) =>
+                conversation.key === selectedKey
+                  ? { ...conversation, unread_count: 0 }
+                  : conversation,
+              ),
+            );
+
+            /*
+             * Mark the corresponding message
+             * notifications as read.
+             *
+             * notifications.reference_id
+             * contains the messages.id.
+             */
+            const { data: notifications, error: notificationError } = await supabase
+              .from("notifications")
+              .select("id, reference_id")
+              .eq("type", "message")
+              .eq("user_id", userId)
+              .eq("is_read", false);
+
+            if (notificationError) {
+              console.error("Load message notifications:", notificationError);
+            } else {
+              const messageIds = new Set(unreadIncoming.map((message) => message.id));
+
+              const notificationIds = (notifications ?? [])
+                .filter(
+                  (notification) =>
+                    notification.reference_id !== null && messageIds.has(notification.reference_id),
+                )
+                .map((notification) => notification.id);
+
+              if (notificationIds.length > 0) {
+                const { error: notificationUpdateError } = await supabase
+                  .from("notifications")
+                  .update({ is_read: true })
+                  .in("id", notificationIds)
+                  .eq("user_id", userId);
+
+                if (notificationUpdateError) {
+                  console.error("Mark message notifications read:", notificationUpdateError);
+                }
+              }
+            }
+          }
+        }
       } finally {
         setLoadingMessages(false);
       }
     },
-    [userId],
+    [userId, selectedKey],
   );
 
   /*
@@ -525,7 +617,7 @@ function MessagesPage() {
           property_id: selectedPropertyId,
           message: body,
         })
-        .select("id, sender_id, receiver_id, property_id, message, created_at")
+        .select("id, sender_id, receiver_id, property_id, message, created_at, read_at")
         .single();
 
       if (error) {
@@ -577,15 +669,15 @@ function MessagesPage() {
    * actually chatting with.
    */
   const selectedUserName = getUserName(selectedOtherUserId);
-
   const selectedUserRole = getUserRole(selectedOtherUserId);
 
   const selectedRoomName = getPropertyName(selectedPropertyId);
 
+  const selectedProperty = selectedPropertyId === null ? null : properties[selectedPropertyId];
+
   return (
     <Page>
-      <div className="mx-auto flex h-[calc(100dvh-150px)] max-w-7xl overflow-hidden rounded-2xl border bg-background shadow-sm md:h-[calc(100vh-140px)]">
-        {" "}
+      <div className="mx-auto flex h-[calc(100dvh-150px)] max-w-7xl overflow-hidden rounded-2xl border border-border bg-card shadow-[var(--shadow-soft)] md:h-[calc(100vh-140px)]">
         {/* =====================================
             CONVERSATION LIST
         ====================================== */}
@@ -594,18 +686,21 @@ function MessagesPage() {
             selectedKey ? "hidden md:block" : "block"
           }`}
         >
-          <div className="flex h-full flex-col">
+          <div className="flex h-full flex-col bg-background/60">
             {/* Header */}
-            <div className="border-b px-4 py-3 sm:px-5 sm:py-4">
+            <div className="border-b border-border bg-card px-4 py-4 sm:px-5">
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
                   <MessageSquare className="h-5 w-5 text-primary" />
                 </div>
 
                 <div>
                   <h1 className="text-lg font-semibold">Messages</h1>
 
-                  <p className="text-sm text-muted-foreground">Your conversations</p>
+                  <p className="text-sm text-muted-foreground">
+                    {conversations.length}{" "}
+                    {conversations.length === 1 ? "conversation" : "conversations"}
+                  </p>
                 </div>
               </div>
             </div>
@@ -629,7 +724,7 @@ function MessagesPage() {
                   </p>
                 </div>
               ) : (
-                <div className="divide-y">
+                <div className="space-y-1 p-2">
                   {conversations.map((conversation) => {
                     const isSelected = conversation.key === selectedKey;
 
@@ -639,23 +734,34 @@ function MessagesPage() {
 
                     const roomName = getPropertyName(conversation.property_id);
 
+                    const property =
+                      conversation.property_id === null
+                        ? null
+                        : properties[conversation.property_id];
+
                     return (
                       <button
                         key={conversation.key}
                         type="button"
                         onClick={() => selectConversation(conversation)}
-                        className={`flex min-h-16 w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/50 sm:px-5 sm:py-4 ${
-                          isSelected ? "bg-primary/5" : ""
+                        className={`flex min-h-16 w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-muted/60 sm:px-4 sm:py-4 ${
+                          isSelected ? "bg-primary/10 ring-1 ring-primary/20" : ""
                         }`}
                       >
                         {/* Avatar */}
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 sm:h-11 sm:w-11">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 sm:h-11 sm:w-11">
                           <UserRound className="h-5 w-5 text-primary" />
                         </div>
 
                         {/* Person + room */}
                         <div className="min-w-0 flex-1">
-                          <p className="truncate font-medium">{otherUserName}</p>
+                          <p
+                            className={`truncate ${
+                              conversation.unread_count ? "font-bold" : "font-medium"
+                            }`}
+                          >
+                            {otherUserName}
+                          </p>
 
                           <p className="truncate text-xs text-muted-foreground">
                             {otherUserRole}
@@ -663,9 +769,29 @@ function MessagesPage() {
                             {roomName}
                           </p>
 
-                          <p className="mt-1 truncate text-xs text-muted-foreground">
-                            {conversation.last_message}
-                          </p>
+                          <div className="mt-1 flex items-center gap-2">
+                            <p
+                              className={`truncate text-sm ${
+                                conversation.unread_count
+                                  ? "font-semibold text-foreground"
+                                  : "text-muted-foreground"
+                              }`}
+                            >
+                              {conversation.last_message}
+                            </p>
+
+                            {conversation.unread_count > 0 ? (
+                              <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-bold text-primary-foreground">
+                                {conversation.unread_count > 9 ? "9+" : conversation.unread_count}
+                              </span>
+                            ) : null}
+                          </div>
+
+                          {property ? (
+                            <p className="mt-1 truncate text-xs text-muted-foreground">
+                              {property.city || property.address || "Property details available"}
+                            </p>
+                          ) : null}
                         </div>
                       </button>
                     );
@@ -675,18 +801,21 @@ function MessagesPage() {
             </div>
           </div>
         </aside>
+
         {/* =====================================
             CHAT AREA
         ====================================== */}
         <section
-          className={`flex min-w-0 flex-1 flex-col ${!selectedKey ? "hidden md:flex" : "flex"}`}
+          className={`flex min-w-0 flex-1 flex-col bg-background ${
+            !selectedKey ? "hidden md:flex" : "flex"
+          }`}
         >
           {selectedKey && selectedOtherUserId && selectedPropertyId !== null ? (
             <>
               {/* =================================
                   CHAT HEADER
               ================================== */}
-              <header className="flex min-h-16 items-center gap-2 border-b px-3 py-2.5 sm:gap-3 sm:px-6 sm:py-3">
+              <header className="flex min-h-20 items-center gap-2 border-b border-border bg-card px-3 py-3 sm:gap-3 sm:px-6">
                 <Button
                   type="button"
                   variant="ghost"
@@ -699,7 +828,7 @@ function MessagesPage() {
                 </Button>
 
                 {/* Avatar */}
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 sm:h-10 sm:w-10">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 sm:h-11 sm:w-11">
                   <UserRound className="h-5 w-5 text-primary" />
                 </div>
 
@@ -707,19 +836,30 @@ function MessagesPage() {
                 <div className="min-w-0">
                   <h2 className="truncate font-semibold">{selectedUserName}</h2>
 
-                  <p className="truncate text-xs text-muted-foreground">
+                  <p className="truncate text-sm text-muted-foreground">
                     {selectedUserRole}
                     {" • "}
                     {selectedRoomName}
                   </p>
+
+                  {selectedProperty ? (
+                    <p className="truncate text-xs text-muted-foreground">
+                      {[selectedProperty.city, selectedProperty.address]
+                        .filter(Boolean)
+                        .join(" · ") || "Property details available"}
+
+                      {selectedProperty.rent
+                        ? ` · ₹${Number(selectedProperty.rent).toLocaleString("en-IN")}/month`
+                        : ""}
+                    </p>
+                  ) : null}
                 </div>
               </header>
 
               {/* =================================
                   MESSAGES
               ================================== */}
-              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3 pb-4 sm:p-6">
-                {" "}
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-muted/20 p-3 pb-4 sm:p-6">
                 {loadingMessages ? (
                   <div className="flex h-full items-center justify-center">
                     <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -750,7 +890,7 @@ function MessagesPage() {
                             className={`max-w-[88%] rounded-2xl px-3 py-2.5 text-sm sm:max-w-[80%] sm:px-4 sm:py-3 ${
                               isMine
                                 ? "rounded-br-md bg-primary text-primary-foreground"
-                                : "rounded-bl-md bg-muted"
+                                : "rounded-bl-md border border-border bg-card shadow-sm"
                             }`}
                           >
                             <p className="whitespace-pre-wrap break-words">{message.message}</p>
@@ -776,7 +916,7 @@ function MessagesPage() {
               {/* =================================
                   MESSAGE INPUT
               ================================== */}
-              <div className="border-t bg-background px-3 py-2.5 pb-[calc(0.625rem+env(safe-area-inset-bottom))] sm:p-4">
+              <div className="border-t border-border bg-card px-3 py-2.5 pb-[calc(0.625rem+env(safe-area-inset-bottom))] sm:p-4">
                 <form
                   onSubmit={(event) => {
                     event.preventDefault();

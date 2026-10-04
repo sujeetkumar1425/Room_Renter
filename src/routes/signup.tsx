@@ -15,8 +15,7 @@ export const Route = createFileRoute("/signup")({
       { title: "Sign up — Room Renter" },
       {
         name: "description",
-        content:
-          "Create a Room Renter account as a room seeker or property owner.",
+        content: "Create a Room Renter account as a room seeker or property owner.",
       },
       {
         property: "og:title",
@@ -179,9 +178,7 @@ function SignupPage() {
             onClick={continueWithGoogle}
             disabled={googleLoading || loading}
           >
-            <span className="flex h-5 w-5 items-center justify-center font-bold text-base">
-              G
-            </span>
+            <span className="flex h-5 w-5 items-center justify-center font-bold text-base">G</span>
             {googleLoading ? "Connecting to Google..." : "Continue with Google"}
           </Button>
 

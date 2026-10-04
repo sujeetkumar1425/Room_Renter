@@ -626,7 +626,7 @@ export function BottomNav() {
 export function Footer() {
   const { role } = useApp();
   return (
-    <footer className="mt-16 border-t border-border bg-surface">
+    <footer className="mt-16 hidden border-t border-border bg-surface md:block">
       <div className="container-page grid gap-8 py-12 sm:grid-cols-2 lg:grid-cols-4">
         {/* BRAND */}
 

@@ -98,12 +98,7 @@ function LoginPage() {
       });
     } else {
       navigate({
-        to: "/search",
-        search: {
-          city: "Lucknow",
-          type: undefined,
-          budget: undefined,
-        },
+        to: "/",
       });
     }
   };
@@ -222,7 +217,7 @@ function LoginPage() {
          * Existing profile found.
          */
         if (existingProfile) {
-          const existingRole = existingProfile.role;
+          let existingRole = existingProfile.role;
 
           if (existingRole !== "renter" && existingRole !== "landlord") {
             console.error("Invalid profile role:", existingRole);
@@ -230,6 +225,27 @@ function LoginPage() {
             toast.error("Your account has an invalid role. Please contact support.");
 
             return;
+          }
+
+          // If this account was just created through email signup and the
+          // database trigger assigned the default renter role, restore the
+          // role the user selected during signup.
+          const pendingEmailRole = localStorage.getItem("pending_email_role");
+
+          if (pendingEmailRole === "landlord" || pendingEmailRole === "renter") {
+            const { error: updateRoleError } = await supabase
+              .from("profiles")
+              .update({ role: pendingEmailRole })
+              .eq("id", session.user.id);
+
+            if (updateRoleError) {
+              console.error("Signup role update error:", updateRoleError);
+              toast.error(updateRoleError.message);
+              return;
+            }
+
+            existingRole = pendingEmailRole;
+            localStorage.removeItem("pending_email_role");
           }
 
           localStorage.removeItem("pending_google_role");
@@ -377,10 +393,12 @@ function LoginPage() {
       setGoogleLoading(true);
 
       /*
-       * Tell the callback that this is LOGIN,
-       * not SIGNUP.
+       * Tell the callback that this is LOGIN and preserve
+       * the role selected in the login screen.
        */
-      localStorage.removeItem("pending_google_role");
+      const googleRole = role === "owner" ? "landlord" : "renter";
+
+      localStorage.setItem("pending_google_role", googleRole);
       localStorage.setItem("google_auth_intent", "login");
 
       const { error } = await supabase.auth.signInWithOAuth({

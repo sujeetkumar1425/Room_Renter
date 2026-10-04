@@ -15,7 +15,8 @@ export const Route = createFileRoute("/signup")({
       { title: "Sign up — Room Renter" },
       {
         name: "description",
-        content: "Create a Room Renter account as a room seeker or property owner.",
+        content:
+          "Create a Room Renter account as a room seeker or property owner.",
       },
       {
         property: "og:title",
@@ -88,6 +89,12 @@ function SignupPage() {
     try {
       setLoading(true);
 
+      const selectedRole = role === "owner" ? "landlord" : "renter";
+
+      // Keep the selected role available if email confirmation is enabled
+      // and Supabase creates the profile through a trigger with a default role.
+      localStorage.setItem("pending_email_role", selectedRole);
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -95,7 +102,7 @@ function SignupPage() {
           data: {
             full_name: name,
             phone,
-            role: role === "owner" ? "landlord" : "renter",
+            role: selectedRole,
           },
         },
       });
@@ -106,15 +113,42 @@ function SignupPage() {
       }
 
       if (!data.user) {
+        localStorage.removeItem("pending_email_role");
         toast.error("Unable to create account");
         return;
       }
 
-      toast.success("Account created successfully!");
+      // If Supabase returned a session, make the selected role explicit in
+      // profiles immediately. This prevents a trigger/default "renter" role.
+      if (data.session) {
+        const { error: profileError } = await supabase.from("profiles").upsert(
+          {
+            id: data.user.id,
+            role: selectedRole,
+            full_name: name.trim(),
+            phone: phone.trim(),
+          },
+          { onConflict: "id" },
+        );
 
-      navigate({
-        to: role === "owner" ? "/list-property" : "/search",
-      });
+        if (profileError) {
+          console.error("Signup profile error:", profileError);
+          toast.error(profileError.message);
+          return;
+        }
+
+        localStorage.removeItem("pending_email_role");
+
+        toast.success("Account created successfully!");
+
+        navigate({
+          to: selectedRole === "landlord" ? "/list-property" : "/",
+        });
+      } else {
+        // Email confirmation is enabled. Keep the role until the user logs in.
+        toast.success("Account created! Please verify your email and log in.");
+        navigate({ to: "/login" });
+      }
     } catch (error) {
       console.error(error);
       toast.error("Something went wrong. Please try again.");
@@ -145,7 +179,9 @@ function SignupPage() {
             onClick={continueWithGoogle}
             disabled={googleLoading || loading}
           >
-            <span className="flex h-5 w-5 items-center justify-center font-bold text-base">G</span>
+            <span className="flex h-5 w-5 items-center justify-center font-bold text-base">
+              G
+            </span>
             {googleLoading ? "Connecting to Google..." : "Continue with Google"}
           </Button>
 

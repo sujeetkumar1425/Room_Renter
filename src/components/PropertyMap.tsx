@@ -49,7 +49,38 @@ export function PropertyMap({
         maxZoom: 19,
       }).addTo(map);
 
-      const marker = L.marker([lat, lng]).addTo(map);
+      const pinIcon = L.divIcon({
+        className: "property-map-pin",
+        html: `
+          <div style="
+            width: 34px;
+            height: 34px;
+            border-radius: 50% 50% 50% 0;
+            background: #0f9d8a;
+            border: 3px solid white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            transform: rotate(-45deg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          ">
+            <div style="
+              width: 10px;
+              height: 10px;
+              background: white;
+              border-radius: 50%;
+            "></div>
+          </div>
+        `,
+        iconSize: [34, 34],
+        iconAnchor: [17, 34],
+        popupAnchor: [0, -34],
+      });
+
+      const marker = L.marker([lat, lng], {
+        icon: pinIcon,
+      }).addTo(map);
+
       marker.bindPopup(title);
 
       mapRef.current = map;

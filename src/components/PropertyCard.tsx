@@ -1,9 +1,24 @@
 import { Link } from "@tanstack/react-router";
 import { Heart, MapPin, Star, BadgeCheck } from "lucide-react";
-import type { Property } from "@/lib/properties";
 import { formatINR } from "@/lib/data";
 import { useApp } from "@/lib/app-context";
 import { cn } from "@/lib/utils";
+
+type PropertyCardProperty = {
+  id: string;
+  title: string;
+  images: string[];
+  verified: boolean;
+  reviews: number;
+  rating: number;
+  area: string;
+  city: string;
+  roomType: string;
+  amenities: string[];
+  rent: number;
+  deposit: number;
+  distance: string;
+};
 
 export function PropertyCard({
   property,
@@ -11,7 +26,7 @@ export function PropertyCard({
   showDeposit = false,
   horizontal = false,
 }: {
-  property: Property;
+  property: PropertyCardProperty;
   compact?: boolean;
   showDeposit?: boolean;
   horizontal?: boolean;
@@ -24,15 +39,15 @@ export function PropertyCard({
       <div className="group card-surface overflow-hidden transition-shadow hover:shadow-[var(--shadow-float)]">
         <div className="grid grid-cols-[42%_58%] sm:grid-cols-[38%_62%]">
           {/* IMAGE */}
-          <div className="relative min-h-[138px]">
+          <div className="relative min-h-[155px]">
             <Link to="/property/$id" params={{ id: property.id }} className="block h-full">
               <img
-                src={property.images[0]}
+                src={property.images?.[0] || "/roomrenter/room-placeholder.png"}
                 alt={property.title}
                 width={1200}
                 height={800}
                 loading="lazy"
-                className="h-full min-h-[138px] w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                className="h-full min-h-[155px] w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
               />
             </Link>
 
@@ -59,7 +74,7 @@ export function PropertyCard({
           </div>
 
           {/* DETAILS */}
-          <div className="min-w-0 space-y-1.5 p-3 sm:space-y-2.5 sm:p-4">
+          <div className="flex min-w-0 flex-col p-3 sm:p-4">
             <div className="flex items-start justify-between gap-2">
               <Link
                 to="/property/$id"
@@ -97,7 +112,7 @@ export function PropertyCard({
               ))}
             </div>
 
-            <div className="flex items-end justify-between gap-2 pt-0.5 sm:pt-1">
+            <div className="mt-auto grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-end gap-2 pt-2 sm:pt-3">
               <div className="min-w-0">
                 <p className="text-sm font-bold sm:text-lg">
                   {formatINR(property.rent)}
@@ -130,7 +145,7 @@ export function PropertyCard({
       <div className="relative">
         <Link to="/property/$id" params={{ id: property.id }}>
           <img
-            src={property.images[0]}
+            src={property.images?.[0] || "/roomrenter/room-placeholder.png"}
             alt={property.title}
             width={1200}
             height={800}

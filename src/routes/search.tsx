@@ -35,30 +35,30 @@ import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/search")({
   validateSearch: (s: Record<string, unknown>) => ({
-    city: typeof s.city === "string" ? s.city : undefined,
+    city: typeof s["city"] === "string" ? s["city"] : undefined,
 
-    type: typeof s.type === "string" ? s.type : undefined,
+    type: typeof s["type"] === "string" ? s["type"] : undefined,
 
-    budget: typeof s.budget === "string" ? s.budget : undefined,
+    budget: typeof s["budget"] === "string" ? s["budget"] : undefined,
   }),
 
   head: () => ({
     meta: [
       {
-        title: "Find a Room — Room Renter",
+        title: "Search rooms in Lucknow — Room Renter",
       },
       {
         name: "description",
         content:
-          "Browse verified rooms, PGs, studios and flats near you with live map, price filters and instant owner chat.",
+          "Browse verified rooms, PGs, studios and flats in Lucknow with live map, price filters and instant owner chat.",
       },
       {
         property: "og:title",
-        content: "Find a Room — Room Renter",
+        content: "Search rooms in Lucknow — Room Renter",
       },
       {
         property: "og:description",
-        content: "Find verified rooms, PGs, studios and flats near your current location.",
+        content: "Filter verified rooms in Lucknow by price, type and amenities.",
       },
     ],
   }),
@@ -71,6 +71,10 @@ export const Route = createFileRoute("/search")({
 // ============================================================
 
 const amenityFilters = ["Wi-Fi", "AC", "Parking", "Food", "Washing Machine", "Power Backup"];
+
+// Default Lucknow coordinates
+const DEFAULT_LATITUDE = 26.8467;
+const DEFAULT_LONGITUDE = 80.9462;
 
 // ============================================================
 // SEARCH PAGE
@@ -166,7 +170,6 @@ function SearchPage() {
 
       try {
         const listed = await fetchListedProperties(activeCity ?? undefined);
-
         console.log("📍 Properties loaded:", listed);
 
         if (!cancelled) {
@@ -369,8 +372,8 @@ function SearchPage() {
         }
 
         const map = leaflet.map(mapContainerRef.current!, {
-          center: [0, 0],
-          zoom: 2,
+          center: [DEFAULT_LATITUDE, DEFAULT_LONGITUDE],
+          zoom: 11,
           zoomControl: true,
         });
 
@@ -450,6 +453,8 @@ function SearchPage() {
     // --------------------------------------------------------
 
     if (mappedProperties.length === 0) {
+      map.setView([DEFAULT_LATITUDE, DEFAULT_LONGITUDE], 11);
+
       return;
     }
 
@@ -724,13 +729,13 @@ function SearchPage() {
   // ==========================================================
 
   const MapPanel = (
-    <div className="relative h-[calc(100vh-10rem)] min-h-[360px] w-full overflow-hidden rounded-2xl border border-border bg-muted sm:h-[min(68vh,620px)] sm:min-h-[420px] lg:h-[calc(100vh-9rem)] lg:min-h-[520px]">
+    <div className="relative h-[min(68vh,620px)] min-h-[420px] w-full overflow-hidden rounded-2xl border border-border bg-muted lg:h-[calc(100vh-9rem)] lg:min-h-[520px]">
       {/* REAL LEAFLET MAP */}
       <div ref={mapContainerRef} className="absolute inset-0 z-0" />
 
       {/* MAP HEADER */}
-      <div className="pointer-events-none absolute left-3 right-3 top-3 z-[500] sm:left-4 sm:right-auto sm:top-4">
-        <div className="w-fit max-w-full truncate rounded-full bg-background/95 px-3 py-1.5 text-xs font-semibold shadow-md backdrop-blur">
+      <div className="pointer-events-none absolute left-4 top-4 z-[500]">
+        <div className="rounded-full bg-background/95 px-3 py-1.5 text-xs font-semibold shadow-md backdrop-blur">
           {activeCity ?? "Selected city"} · {results.length} rooms
         </div>
       </div>
@@ -765,7 +770,7 @@ function SearchPage() {
 
       {/* SELECTED PROPERTY CARD */}
       {selectedProperty && (
-        <div className="absolute inset-x-3 bottom-3 z-[600] max-w-sm sm:inset-x-4 sm:bottom-4">
+        <div className="absolute inset-x-4 bottom-4 z-[600] max-w-sm">
           <div className="relative">
             <button
               onClick={() => setSelected(null)}
@@ -821,69 +826,49 @@ function SearchPage() {
       ====================================================== */}
 
       <div className="border-b border-border bg-surface">
-        <div className="container-page py-3 sm:py-4">
-          {/* LOCATION + FILTER — SAME ROW */}
-          <div className="flex items-center gap-2">
+        <div className="container-page py-4">
+          <div className="flex flex-wrap items-center gap-2">
+            {/* CITY */}
             <button
-              type="button"
               onClick={openLocationModal}
-              className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm font-semibold shadow-sm transition-colors hover:bg-muted"
-              aria-label="Change location"
+              className="flex items-center gap-2 rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm font-medium"
             >
-              <MapPin className="h-4 w-4 shrink-0 text-primary" />
-              <span className="truncate">{activeCity ?? "Select city"}</span>
+              <MapPin className="h-4 w-4 text-primary" />
+
+              {activeCity ?? "Select city"}
             </button>
 
+            {/* SEARCH */}
+            <div className="relative min-w-[200px] flex-1">
+              <SearchIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+
+              <Input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search area, e.g. Gomti Nagar"
+                className="h-11 rounded-xl pl-9"
+              />
+            </div>
+
+            {/* MOBILE FILTER BUTTON */}
             <Button
-              type="button"
-              variant={showFilters ? "default" : "outline"}
-              size="icon"
-              className="h-11 w-11 shrink-0 rounded-xl"
+              variant="outline"
+              className="rounded-xl lg:hidden"
               onClick={() => setShowFilters((value) => !value)}
-              aria-label={showFilters ? "Hide filters" : "Open filters"}
-              title={showFilters ? "Hide filters" : "Open filters"}
             >
               <SlidersHorizontal className="h-4 w-4" />
+              Filters
             </Button>
-          </div>
 
-          {/* SEARCH */}
-          <div className="relative mt-2">
-            <SearchIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-
-            <Input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search area, e.g. Gomti Nagar"
-              className={cn("h-11 w-full rounded-xl bg-background pl-9 shadow-sm", query && "pr-9")}
-              aria-label="Search rooms by area"
-            />
-
-            {query ? (
-              <button
-                type="button"
-                onClick={() => setQuery("")}
-                className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                aria-label="Clear search"
-                title="Clear search"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            ) : null}
+            {/* VERIFIED */}
+            <div className="ml-auto hidden items-center gap-1.5 text-sm text-muted-foreground lg:flex">
+              <Star className="h-4 w-4 fill-warning text-warning" />
+              Only verified owners
+            </div>
           </div>
 
           {/* MOBILE FILTERS */}
-          {showFilters ? (
-            <div className="card-surface mt-3 max-h-[60vh] overflow-y-auto overscroll-contain p-4 lg:hidden">
-              {Filters}
-            </div>
-          ) : null}
-
-          {/* DESKTOP VERIFIED INDICATOR */}
-          <div className="mt-3 hidden items-center gap-1.5 text-xs text-muted-foreground lg:flex">
-            <Star className="h-3.5 w-3.5 fill-warning text-warning" />
-            Only verified owners
-          </div>
+          {showFilters && <div className="card-surface mt-3 p-4 lg:hidden">{Filters}</div>}
         </div>
       </div>
 
@@ -900,7 +885,7 @@ function SearchPage() {
            MAIN CONTENT
         ==================================================== */
 
-        <div className="container-page grid min-w-0 gap-5 py-4 sm:gap-6 sm:py-6 lg:grid-cols-[240px_minmax(0,1fr)_minmax(360px,460px)]">
+        <div className="container-page grid min-w-0 gap-6 py-6 lg:grid-cols-[240px_minmax(0,1fr)_minmax(360px,460px)]">
           {/* =================================================
               DESKTOP FILTERS
           ================================================== */}
@@ -914,38 +899,12 @@ function SearchPage() {
           ================================================== */}
 
           <section className={cn(mobileView === "map" && "hidden lg:block")}>
-            <div className="mb-4 flex gap-2 overflow-x-auto pb-1 lg:hidden">
-              {["Any type", "PG", "Flat", "Room", "Studio"].map((roomType) => (
-                <button
-                  key={roomType}
-                  type="button"
-                  onClick={() => setType(roomType)}
-                  className={cn(
-                    "shrink-0 rounded-xl border px-3 py-2 text-xs font-semibold transition-colors",
-                    type === roomType
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "border-border bg-background text-muted-foreground hover:bg-muted",
-                  )}
-                >
-                  {roomType}
-                </button>
-              ))}
-            </div>
-
-            <div className="flex items-center justify-between gap-3">
-              <h1 className="min-w-0 text-lg font-bold sm:text-xl">
-                {results.length} {results.length === 1 ? "room" : "rooms"} in{" "}
-                {activeCity ?? "your city"}
+            <div className="flex items-baseline justify-between">
+              <h1 className="text-xl font-bold">
+                {results.length} rooms in {activeCity ?? "your city"}
               </h1>
 
-              <button
-                type="button"
-                onClick={() => setShowFilters(true)}
-                className="hidden items-center gap-1.5 rounded-xl border border-border bg-background px-3 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:bg-muted sm:flex"
-              >
-                <SlidersHorizontal className="h-3.5 w-3.5" />
-                Sort
-              </button>
+              <span className="text-sm text-muted-foreground">Sorted by relevance</span>
             </div>
 
             {/* ERROR */}
@@ -983,10 +942,10 @@ function SearchPage() {
               </div>
             ) : (
               /* PROPERTY CARDS */
-              <div className="mt-4 grid gap-4 sm:mt-5 sm:gap-5 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+              <div className="mt-5 grid gap-4">
                 {results.map((property) => (
                   <div key={property.id} onClick={() => setSelected(String(property.id))}>
-                    <PropertyCard property={property} showDeposit />
+                    <PropertyCard property={property} showDeposit horizontal />
                   </div>
                 ))}
               </div>
@@ -1010,7 +969,7 @@ function SearchPage() {
       {available && !isLoading && (
         <button
           onClick={() => setMobileView((value) => (value === "list" ? "map" : "list"))}
-          className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] left-1/2 z-[700] flex -translate-x-1/2 items-center gap-2 rounded-full bg-foreground px-4 py-2.5 text-sm font-semibold text-background shadow-[var(--shadow-float)] sm:bottom-20 sm:px-5 sm:py-3 lg:hidden"
+          className="fixed bottom-20 left-1/2 z-[700] flex -translate-x-1/2 items-center gap-2 rounded-full bg-foreground px-5 py-3 text-sm font-semibold text-background shadow-[var(--shadow-float)] lg:hidden"
         >
           {mobileView === "list" ? <MapIcon className="h-4 w-4" /> : <List className="h-4 w-4" />}
 
@@ -1022,7 +981,7 @@ function SearchPage() {
           MOBILE FOOTER
       ====================================================== */}
 
-      <div className="container-page pb-24 pt-2 text-center text-sm text-muted-foreground lg:hidden">
+      <div className="container-page pb-10 text-center text-sm text-muted-foreground lg:hidden">
         <Link to="/" className="text-primary hover:underline">
           Back to home
         </Link>

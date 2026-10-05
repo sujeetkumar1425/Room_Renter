@@ -35,11 +35,11 @@ import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/search")({
   validateSearch: (s: Record<string, unknown>) => ({
-    city: typeof s["city"] === "string" ? s["city"] : undefined,
+    city: typeof s.city === "string" ? s.city : undefined,
 
-    type: typeof s["type"] === "string" ? s["type"] : undefined,
+    type: typeof s.type === "string" ? s.type : undefined,
 
-    budget: typeof s["budget"] === "string" ? s["budget"] : undefined,
+    budget: typeof s.budget === "string" ? s.budget : undefined,
   }),
 
   head: () => ({
@@ -170,6 +170,7 @@ function SearchPage() {
 
       try {
         const listed = await fetchListedProperties(activeCity ?? undefined);
+
         console.log("📍 Properties loaded:", listed);
 
         if (!cancelled) {
@@ -838,7 +839,7 @@ function SearchPage() {
               {activeCity ?? "Select city"}
             </button>
 
-            {/* SEARCH */}
+            {/* SEARCH + MOBILE FILTER */}
             <div className="relative min-w-[200px] flex-1">
               <SearchIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
 
@@ -846,19 +847,25 @@ function SearchPage() {
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="Search area, e.g. Gomti Nagar"
-                className="h-11 rounded-xl pl-9"
+                className="h-11 rounded-xl pl-9 pr-11"
               />
-            </div>
 
-            {/* MOBILE FILTER BUTTON */}
-            <Button
-              variant="outline"
-              className="rounded-xl lg:hidden"
-              onClick={() => setShowFilters((value) => !value)}
-            >
-              <SlidersHorizontal className="h-4 w-4" />
-              Filters
-            </Button>
+              {/* FILTER ICON — INSIDE SEARCH BAR ON MOBILE */}
+              <button
+                type="button"
+                aria-label="Open filters"
+                aria-expanded={showFilters}
+                onClick={() => setShowFilters((value) => !value)}
+                className={cn(
+                  "absolute right-1.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg transition-colors lg:hidden",
+                  showFilters
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                )}
+              >
+                <SlidersHorizontal className="h-4 w-4" />
+              </button>
+            </div>
 
             {/* VERIFIED */}
             <div className="ml-auto hidden items-center gap-1.5 text-sm text-muted-foreground lg:flex">
@@ -942,10 +949,10 @@ function SearchPage() {
               </div>
             ) : (
               /* PROPERTY CARDS */
-              <div className="mt-5 grid gap-4">
+              <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
                 {results.map((property) => (
                   <div key={property.id} onClick={() => setSelected(String(property.id))}>
-                    <PropertyCard property={property} showDeposit horizontal />
+                    <PropertyCard property={property} showDeposit />
                   </div>
                 ))}
               </div>

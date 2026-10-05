@@ -8,8 +8,8 @@ import {
   MapPin,
   Menu,
   Bell,
-  Building2,
   CalendarDays,
+  Building2,
   LogOut,
   LayoutDashboard,
 } from "lucide-react";
@@ -280,6 +280,24 @@ export function Header() {
           </div>
 
           {/* =================================================
+              SAVED ROOMS (RENTER ONLY)
+          ================================================= */}
+
+          {user && !isLandlord ? (
+            <Button
+              asChild
+              variant="ghost"
+              size="icon"
+              className="rounded-full"
+              aria-label="Saved rooms"
+            >
+              <Link to="/saved">
+                <Heart className="h-[18px] w-[18px]" />
+              </Link>
+            </Button>
+          ) : null}
+
+          {/* =================================================
               NOTIFICATIONS
           ================================================= */}
 
@@ -536,18 +554,54 @@ export function Header() {
 ========================================================= */
 
 const renterBottomNav = [
-  { to: "/", label: "Home", icon: Home },
-  { to: "/search", label: "Explore", icon: Search },
-  { to: "/saved", label: "Saved", icon: Heart },
-  { to: "/messages", label: "Messages", icon: MessageSquare },
-  { to: "/dashboard", label: "Profile", icon: UserIcon },
+  {
+    to: "/",
+    label: "Home",
+    icon: Home,
+  },
+  {
+    to: "/search",
+    label: "Explore",
+    icon: Search,
+  },
+  {
+    to: "/bookings",
+    label: "Bookings",
+    icon: CalendarDays,
+  },
+  {
+    to: "/messages",
+    label: "Messages",
+    icon: MessageSquare,
+  },
+  {
+    to: "/dashboard",
+    label: "Profile",
+    icon: UserIcon,
+  },
 ] as const;
 
 const landlordBottomNav = [
-  { to: "/landlord", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/bookings", label: "Bookings", icon: CalendarDays },
-  { to: "/messages", label: "Messages", icon: MessageSquare },
-  { to: "/landlord-profile", label: "Profile", icon: UserIcon },
+  {
+    to: "/landlord",
+    label: "Dashboard",
+    icon: LayoutDashboard,
+  },
+  {
+    to: "/bookings",
+    label: "Bookings",
+    icon: CalendarDays,
+  },
+  {
+    to: "/messages",
+    label: "Messages",
+    icon: MessageSquare,
+  },
+  {
+    to: "/landlord-profile",
+    label: "Profile",
+    icon: UserIcon,
+  },
 ] as const;
 
 export function BottomNav() {
@@ -558,34 +612,22 @@ export function BottomNav() {
   const items = role === "landlord" ? landlordBottomNav : renterBottomNav;
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 shadow-[0_-4px_16px_rgba(0,0,0,0.04)] backdrop-blur-md md:hidden">
-      <div className="mx-auto flex max-w-lg items-stretch justify-around px-1 pb-[env(safe-area-inset-bottom)]">
+    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur-md md:hidden">
+      <div className="flex items-stretch justify-around px-1 pb-[env(safe-area-inset-bottom)]">
         {items.map((item) => {
-          const active =
-            item.to === "/"
-              ? pathname === "/"
-              : pathname === item.to || pathname.startsWith(`${item.to}/`);
+          const active = item.to === "/" ? pathname === "/" : pathname.startsWith(item.to);
 
           return (
             <Link
               key={item.to}
               to={item.to}
-              {...(item.to === "/messages"
-                ? { search: { propertyId: undefined, landlordId: undefined } }
-                : {})}
               className={cn(
-                "flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 py-1.5 text-[10px] font-medium transition-colors",
+                "flex flex-1 flex-col items-center gap-1 py-2.5 text-[11px] font-medium transition-colors",
                 active ? "text-primary" : "text-muted-foreground",
               )}
             >
-              <span
-                className={cn(
-                  "flex h-8 min-w-10 items-center justify-center rounded-full px-2 transition-colors",
-                  active && "bg-primary/10",
-                )}
-              >
-                <item.icon className="h-[18px] w-[18px]" />
-              </span>
+              <item.icon className={cn("h-5 w-5", active && "fill-primary/10")} />
+
               {item.label}
             </Link>
           );
@@ -694,7 +736,7 @@ export function Page({ children, footer = true }: { children: ReactNode; footer?
     <div className="flex min-h-screen flex-col bg-background">
       <Header />
 
-      <main className="flex-1 pb-16 md:pb-0">{children}</main>
+      <main className="flex-1 pb-20 md:pb-0">{children}</main>
 
       {footer && <Footer />}
 

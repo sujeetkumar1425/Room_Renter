@@ -67,6 +67,23 @@ type RenterLookup = {
   full_name: string | null;
 };
 
+function getPropertyImage(images: string[] | null | undefined) {
+  const image = images?.find((value) => value?.trim());
+
+  if (!image) return null;
+
+  if (
+    image.startsWith("http://") ||
+    image.startsWith("https://") ||
+    image.startsWith("/") ||
+    image.startsWith("data:")
+  ) {
+    return image;
+  }
+
+  return supabase.storage.from("property-images").getPublicUrl(image).data.publicUrl;
+}
+
 export const Route = createFileRoute("/bookings")({
   beforeLoad: async () => {
     const {
@@ -95,6 +112,11 @@ function BookingsPage() {
   const [filter, setFilter] = useState("all");
 
   const [clearedBookingIds, setClearedBookingIds] = useState<number[]>([]);
+
+  const [confirmation, setConfirmation] = useState<{ type: "cancel" | "clear"; id: number } | null>(
+    null,
+  );
+  const [landlordClearId, setLandlordClearId] = useState<number | null>(null);
 
   const load = async () => {
     const {
@@ -170,8 +192,11 @@ function BookingsPage() {
 
     if (renterIds.length) {
       const { data: renterData, error: renterError } = await supabase
+
         .from("profiles")
+
         .select("id,full_name")
+
         .in("id", renterIds);
 
       if (renterError) {
@@ -243,7 +268,27 @@ function BookingsPage() {
   const clearBooking = (id: number) => {
     setClearedBookingIds((current) => (current.includes(id) ? current : [...current, id]));
 
+    // Remove it immediately from the current list.
+    setBookings((current) => current.filter((booking) => booking.id !== id));
+
+    setConfirmation(null);
     toast.success("Booking cleared from your list.");
+  };
+
+  const confirmBookingAction = async () => {
+    if (!confirmation) return;
+
+    const action = confirmation;
+
+    setConfirmation(null);
+
+    if (action.type === "clear") {
+      clearBooking(action.id);
+
+      return;
+    }
+
+    await updateStatus(action.id, "cancelled");
   };
 
   const updateStatus = async (id: number, status: "approved" | "rejected" | "cancelled") => {
@@ -284,82 +329,105 @@ function BookingsPage() {
       : bookings;
 
   if (role === "renter") {
+    const renterFilters = [
+      ["all", "All"],
+
+      ["pending", "Upcoming"],
+
+      ["approved", "Accepted"],
+
+      ["cancelled", "Cancelled"],
+    ] as const;
+
+    const renterFilteredBookings = visibleBookings.filter((booking) => {
+      if (filter === "all") return true;
+
+      if (filter === "cancelled") {
+        return booking.status === "cancelled" || booking.status === "rejected";
+      }
+
+      if (filter === "pending") return booking.status === "pending";
+
+      if (filter === "approved") return booking.status === "approved";
+
+      return true;
+    });
+
     return (
       <Page>
-        <div className="container-page overflow-x-hidden pb-28 pt-6 sm:py-10">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+        <div className="container-page overflow-x-hidden pb-24 pt-4 sm:py-10">
+          {/* Compact mobile-first header */}
+
+          <section className="rounded-2xl border border-primary/10 bg-primary/[0.04] px-3.5 py-3.5 sm:rounded-3xl sm:px-5 sm:py-5">
+            <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-primary sm:text-xs">
               Room Seeker
             </p>
 
-            <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">
+            <h1 className="mt-1 text-[21px] font-extrabold tracking-tight text-foreground sm:text-3xl">
               Bookings & Visits
             </h1>
 
-            <p className="mt-2 max-w-lg text-sm leading-6 text-muted-foreground">
+            <p className="mt-1 text-[10px] leading-4 text-muted-foreground sm:mt-2 sm:text-sm sm:leading-6">
               Track your room visits and their current status.
             </p>
-          </div>
+          </section>
 
-          <div className="mt-6 flex gap-2 overflow-x-auto pb-1">
-            {[
-              ["all", "All"],
+          {/* Status filters */}
 
-              ["pending", "Upcoming"],
-
-              ["approved", "Accepted"],
-
-              ["cancelled", "Cancelled"],
-            ].map(([value, label]) => {
+          <div className="mt-3 flex gap-1.5 overflow-x-auto pb-1 scrollbar-none sm:mt-5 sm:gap-2">
+            {renterFilters.map(([value, label]) => {
               const count =
                 value === "all"
                   ? visibleBookings.length
-                  : visibleBookings.filter((booking) =>
-                      value === "approved"
-                        ? booking.status === "approved"
-                        : value === "cancelled"
-                          ? booking.status === "cancelled"
-                          : value === "pending"
-                            ? booking.status === "pending"
-                            : false,
-                    ).length;
+                  : value === "pending"
+                    ? visibleBookings.filter((booking) => booking.status === "pending").length
+                    : value === "approved"
+                      ? visibleBookings.filter((booking) => booking.status === "approved").length
+                      : visibleBookings.filter(
+                          (booking) =>
+                            booking.status === "cancelled" || booking.status === "rejected",
+                        ).length;
+
+              const active = filter === value;
 
               return (
-                <span
+                <button
                   key={value}
 
-                  className={cn(
-                    "shrink-0 rounded-full px-3.5 py-2 text-xs font-semibold",
+                  type="button"
 
-                    value === "all"
-                      ? "bg-primary text-primary-foreground"
-                      : "border border-border bg-background text-muted-foreground",
+                  onClick={() => setFilter(value)}
+
+                  className={cn(
+                    "shrink-0 rounded-full border px-3 py-1.5 text-[9px] font-bold transition-colors sm:px-3.5 sm:py-2 sm:text-xs",
+
+                    active
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border bg-background text-muted-foreground hover:border-primary/30 hover:text-foreground",
                   )}
                 >
-                  {label}
-
-                  <span className="ml-1 opacity-70">{count}</span>
-                </span>
+                  {label} <span className="opacity-70">{count}</span>
+                </button>
               );
             })}
           </div>
 
-          <div className="mt-5 space-y-3">
+          <div className="mt-3 space-y-2.5 sm:mt-5 sm:space-y-3">
             {loading ? (
-              <div className="rounded-2xl border border-border bg-card p-10 text-center text-sm text-muted-foreground">
+              <div className="rounded-2xl border border-border bg-card p-8 text-center text-xs text-muted-foreground sm:p-10 sm:text-sm">
                 Loading bookings...
               </div>
-            ) : visibleBookings.length === 0 ? (
-              <div className="rounded-2xl border border-border bg-card p-10 text-center">
-                <CalendarDays className="mx-auto h-10 w-10 text-primary" />
+            ) : renterFilteredBookings.length === 0 ? (
+              <div className="rounded-2xl border border-border bg-card p-8 text-center sm:p-10">
+                <CalendarDays className="mx-auto h-9 w-9 text-primary" />
 
-                <h2 className="mt-4 font-semibold">No bookings yet</h2>
+                <h2 className="mt-3 text-sm font-bold sm:text-base">No bookings yet</h2>
 
-                <p className="mt-1 text-sm text-muted-foreground">
+                <p className="mx-auto mt-1 max-w-sm text-[10px] leading-4 text-muted-foreground sm:text-sm sm:leading-5">
                   Open a property and schedule a visit to create your first booking.
                 </p>
 
-                <Button asChild className="mt-5 rounded-xl">
+                <Button asChild className="mt-4 h-9 rounded-xl px-4 text-xs">
                   <Link
                     to="/search"
 
@@ -376,32 +444,56 @@ function BookingsPage() {
                 </Button>
               </div>
             ) : (
-              visibleBookings.map((booking) => {
+              renterFilteredBookings.map((booking) => {
                 const property = propertyMap.get(booking.property_id);
+
+                const isCancelled = booking.status === "cancelled";
+
+                const isRejected = booking.status === "rejected";
+
+                const canCancel = booking.status === "pending" || booking.status === "approved";
 
                 return (
                   <article
                     key={booking.id}
 
-                    className="rounded-2xl border border-border/80 bg-card p-4 shadow-[var(--shadow-soft)] transition-shadow hover:shadow-[var(--shadow-card)] sm:p-5"
+                    className="overflow-hidden rounded-2xl border border-border/80 bg-card px-3 py-2.5 shadow-[var(--shadow-soft)] sm:p-5"
                   >
-                    <div className="flex items-start gap-3">
-                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                        <Home className="h-5 w-5" />
+                    {/* Property row */}
+
+                    <div className="flex min-w-0 items-start gap-2.5">
+                      <div className="relative h-[72px] w-[68px] shrink-0 overflow-hidden rounded-xl bg-muted sm:h-24 sm:w-28">
+                        {getPropertyImage(property?.images) ? (
+                          <img
+                            src={getPropertyImage(property?.images) ?? undefined}
+
+                            alt={property?.title || "Property"}
+
+                            className="h-full w-full object-cover"
+
+                            loading="lazy"
+                          />
+                        ) : (
+                          <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-primary/50">
+                            <Home className="h-4 w-4 sm:h-6 sm:w-6" />
+
+                            <span className="text-[6px] font-medium sm:text-[8px]">No image</span>
+                          </div>
+                        )}
                       </div>
 
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            <h2 className="truncate text-base font-bold">
+                        <div className="flex min-w-0 items-start justify-between gap-1.5">
+                          <div className="min-w-0 flex-1">
+                            <h2 className="line-clamp-1 text-[10px] font-extrabold leading-4 text-foreground sm:text-base sm:leading-5">
                               {property?.title || `Property #${booking.property_id}`}
                             </h2>
 
                             {property?.address ? (
-                              <p className="mt-1 flex items-center gap-1 truncate text-xs text-muted-foreground">
-                                <MapPin className="h-3 w-3 shrink-0" />
+                              <p className="mt-0.5 flex min-w-0 items-center gap-1 truncate text-[8px] leading-3 text-muted-foreground sm:text-xs sm:leading-4">
+                                <MapPin className="h-2.5 w-2.5 shrink-0 sm:h-3 sm:w-3" />
 
-                                {property.address}
+                                <span className="truncate">{property.address}</span>
                               </p>
                             ) : null}
                           </div>
@@ -409,57 +501,61 @@ function BookingsPage() {
                           <StatusBadge status={booking.status} />
                         </div>
 
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-xs font-medium">
-                            <CalendarDays className="h-3.5 w-3.5" />
+                        {/* Date/time */}
+
+                        <div className="mt-2 flex flex-wrap gap-1.5 sm:mt-3 sm:gap-2">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-1 text-[8px] font-medium leading-3 sm:px-2.5 sm:py-1 sm:text-xs sm:leading-4">
+                            <CalendarDays className="h-2.5 w-2.5 sm:h-3.5 sm:w-3.5" />
 
                             {formatDate(booking.visit_date)}
                           </span>
 
-                          <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-xs font-medium">
-                            <Clock3 className="h-3.5 w-3.5" />
+                          <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-1 text-[8px] font-medium leading-3 sm:px-2.5 sm:py-1 sm:text-xs sm:leading-4">
+                            <Clock3 className="h-2.5 w-2.5 sm:h-3.5 sm:w-3.5" />
 
                             {formatTime(booking.visit_time)}
                           </span>
                         </div>
 
+                        {/* Renter's message */}
+
                         {booking.notes ? (
-                          <p className="mt-3 rounded-xl bg-muted px-3 py-2.5 text-xs leading-5 text-muted-foreground">
+                          <p className="mt-2 line-clamp-2 rounded-xl bg-muted px-2.5 py-2 text-[8px] leading-3.5 text-muted-foreground sm:mt-3 sm:px-3 sm:py-2.5 sm:text-xs sm:leading-5">
                             {booking.notes}
                           </p>
                         ) : null}
 
-                        <div className="mt-3 flex items-center justify-between gap-2">
-                          {booking.status === "pending" || booking.status === "approved" ? (
+                        {/* Actions */}
+
+                        <div className="mt-2 flex min-h-5 items-center justify-end gap-1.5 sm:mt-3 sm:gap-2">
+                          {canCancel ? (
                             <Button
                               variant="outline"
 
                               size="sm"
 
-                              className="rounded-lg text-destructive hover:text-destructive"
+                              className="h-6 rounded-full border-destructive/20 px-2.5 text-[8px] text-destructive hover:text-destructive sm:h-8 sm:rounded-lg sm:px-3 sm:text-xs"
 
                               disabled={workingId === booking.id}
 
-                              onClick={() => void updateStatus(booking.id, "cancelled")}
+                              onClick={() => setConfirmation({ type: "cancel", id: booking.id })}
                             >
-                              <X className="mr-1.5 h-3.5 w-3.5" />
+                              <X className="mr-1 h-2.5 w-2.5 sm:h-3.5 sm:w-3.5" />
                               Cancel
                             </Button>
-                          ) : (
-                            <span />
-                          )}
+                          ) : null}
 
-                          {booking.status === "cancelled" || booking.status === "rejected" ? (
+                          {isCancelled || isRejected ? (
                             <Button
                               variant="ghost"
 
                               size="sm"
 
-                              className="rounded-lg text-muted-foreground"
+                              className="h-6 rounded-full px-2.5 text-[8px] text-muted-foreground sm:h-8 sm:rounded-lg sm:px-3 sm:text-xs"
 
-                              onClick={() => clearBooking(booking.id)}
+                              onClick={() => setConfirmation({ type: "clear", id: booking.id })}
                             >
-                              <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+                              <Trash2 className="mr-1 h-2.5 w-2.5 sm:h-3.5 sm:w-3.5" />
                               Clear
                             </Button>
                           ) : null}
@@ -472,6 +568,77 @@ function BookingsPage() {
             )}
           </div>
         </div>
+
+        {confirmation ? (
+          <div
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/45 p-4"
+
+            role="presentation"
+
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget) setConfirmation(null);
+            }}
+          >
+            <div
+              role="dialog"
+
+              aria-modal="true"
+
+              aria-labelledby="booking-confirmation-title"
+
+              className="w-full max-w-sm rounded-3xl border border-border bg-card p-5 shadow-2xl"
+            >
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+                {confirmation.type === "cancel" ? (
+                  <X className="h-6 w-6" />
+                ) : (
+                  <Trash2 className="h-6 w-6" />
+                )}
+              </div>
+
+              <h2
+                id="booking-confirmation-title"
+                className="mt-4 text-center text-lg font-extrabold"
+              >
+                {confirmation.type === "cancel" ? "Cancel booking?" : "Clear this booking?"}
+              </h2>
+
+              <p className="mt-2 text-center text-sm leading-5 text-muted-foreground">
+                {confirmation.type === "cancel"
+                  ? "Are you sure you want to cancel this visit? This action cannot be undone."
+                  : "This will remove the booking from your list. You can’t undo this action."}
+              </p>
+
+              <div className="mt-5 grid gap-2">
+                <Button
+                  type="button"
+
+                  variant="destructive"
+
+                  className="h-10 rounded-xl"
+
+                  disabled={workingId !== null}
+
+                  onClick={() => void confirmBookingAction()}
+                >
+                  {confirmation.type === "cancel" ? "Yes, Cancel" : "Yes, Clear"}
+                </Button>
+
+                <Button
+                  type="button"
+
+                  variant="outline"
+
+                  className="h-10 rounded-xl"
+
+                  onClick={() => setConfirmation(null)}
+                >
+                  Keep it
+                </Button>
+              </div>
+            </div>
+          </div>
+        ) : null}
       </Page>
     );
   }
@@ -482,8 +649,11 @@ function BookingsPage() {
 
   const landlordCounts = {
     all: landlordVisibleBookings.length,
+
     pending: landlordVisibleBookings.filter((booking) => booking.status === "pending").length,
+
     approved: landlordVisibleBookings.filter((booking) => booking.status === "approved").length,
+
     cancelled: landlordVisibleBookings.filter(
       (booking) => booking.status === "cancelled" || booking.status === "rejected",
     ).length,
@@ -491,9 +661,11 @@ function BookingsPage() {
 
   const landlordFilterBookings = landlordVisibleBookings.filter((booking) => {
     if (filter === "all") return true;
+
     if (filter === "cancelled") {
       return booking.status === "cancelled" || booking.status === "rejected";
     }
+
     return booking.status === filter;
   });
 
@@ -502,15 +674,18 @@ function BookingsPage() {
       <div className="container-page overflow-x-hidden pb-28 pt-5 sm:py-10">
         <section className="relative overflow-hidden rounded-3xl border border-primary/10 bg-gradient-to-br from-primary/[0.08] via-background to-primary/[0.04] px-5 pb-6 pt-6 shadow-sm sm:px-7">
           <div className="pointer-events-none absolute -right-8 -top-10 h-36 w-36 rounded-full bg-primary/10" />
+
           <div className="pointer-events-none absolute right-14 top-12 h-20 w-20 rounded-full bg-primary/10" />
 
           <div className="relative pr-20 sm:pr-28">
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">
               Landlord
             </p>
+
             <h1 className="mt-1 text-2xl font-extrabold tracking-tight sm:text-3xl">
               Bookings & Visits
             </h1>
+
             <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
               Manage renter requests, approve visits, and keep cancelled requests organised.
             </p>
@@ -524,22 +699,30 @@ function BookingsPage() {
         <div className="mt-5 flex gap-2 overflow-x-auto pb-1">
           {[
             ["all", "All"],
+
             ["pending", "Pending"],
+
             ["approved", "Accepted"],
+
             ["cancelled", "Cancelled"],
           ].map(([value, label]) => (
             <button
               key={value}
+
               type="button"
+
               onClick={() => setFilter(value)}
+
               className={cn(
                 "shrink-0 rounded-full px-4 py-2.5 text-xs font-bold transition-colors",
+
                 filter === value
                   ? "bg-primary text-primary-foreground shadow-sm"
                   : "border border-border bg-background text-muted-foreground hover:bg-muted",
               )}
             >
               {label}
+
               <span className="ml-1 opacity-70">
                 {landlordCounts[value as keyof typeof landlordCounts]}
               </span>
@@ -555,7 +738,9 @@ function BookingsPage() {
           ) : landlordFilterBookings.length === 0 ? (
             <div className="rounded-3xl border border-border bg-card p-10 text-center">
               <CalendarDays className="mx-auto h-10 w-10 text-primary" />
+
               <h2 className="mt-4 font-semibold">No booking requests</h2>
+
               <p className="mt-1 text-sm text-muted-foreground">
                 New renter visit requests will appear here.
               </p>
@@ -563,14 +748,19 @@ function BookingsPage() {
           ) : (
             landlordFilterBookings.map((booking) => {
               const property = propertyMap.get(booking.property_id);
+
               const renter = renterMap.get(booking.renter_id);
+
               const image = property?.images?.[0];
+
               const isPending = booking.status === "pending";
+
               const isCancelled = booking.status === "cancelled";
 
               return (
                 <article
                   key={booking.id}
+
                   className="overflow-hidden rounded-3xl border border-border/80 bg-card p-3 shadow-[var(--shadow-soft)] sm:p-5"
                 >
                   <div className="grid grid-cols-[104px_minmax(0,1fr)] items-start gap-3 sm:flex sm:gap-5">
@@ -578,7 +768,9 @@ function BookingsPage() {
                       {image ? (
                         <img
                           src={image}
+
                           alt={property?.title || "Property"}
+
                           className="h-full w-full object-cover"
                         />
                       ) : (
@@ -586,6 +778,7 @@ function BookingsPage() {
                           <Home className="h-8 w-8" />
                         </div>
                       )}
+
                       <div className="absolute left-1.5 top-1.5 rounded-full bg-background/90 px-2 py-0.5 text-[8px] font-bold capitalize shadow-sm">
                         {booking.status}
                       </div>
@@ -597,13 +790,16 @@ function BookingsPage() {
                           <h2 className="line-clamp-2 text-[12px] font-extrabold leading-4 tracking-tight sm:text-lg sm:leading-6">
                             {property?.title || `Property #${booking.property_id}`}
                           </h2>
+
                           {property?.address ? (
                             <p className="mt-1 flex items-start gap-1 text-[9px] leading-3.5 text-muted-foreground sm:text-xs sm:leading-5">
                               <MapPin className="mt-0.5 h-3 w-3 shrink-0" />
+
                               <span className="line-clamp-2">{property.address}</span>
                             </p>
                           ) : null}
                         </div>
+
                         <StatusBadge status={booking.status} />
                       </div>
 
@@ -613,11 +809,13 @@ function BookingsPage() {
                             {property.room_type}
                           </span>
                         ) : null}
+
                         {property?.furnished ? (
                           <span className="rounded-full bg-muted px-1.5 py-0.5 text-[8px] font-semibold sm:px-2.5 sm:py-1 sm:text-[10px]">
                             {String(property.furnished)}
                           </span>
                         ) : null}
+
                         {property?.bedrooms ? (
                           <span className="rounded-full bg-muted px-1.5 py-0.5 text-[8px] font-semibold sm:px-2.5 sm:py-1 sm:text-[10px]">
                             {property.bedrooms} BHK
@@ -629,10 +827,12 @@ function BookingsPage() {
                         <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary sm:h-9 sm:w-9">
                           <UserRound className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                         </div>
+
                         <div className="min-w-0">
                           <p className="truncate text-[9px] font-bold sm:text-xs">
                             {renter?.full_name?.trim() || "Renter"}
                           </p>
+
                           <p className="text-[8px] text-muted-foreground sm:text-[10px]">Renter</p>
                         </div>
                       </div>
@@ -640,10 +840,13 @@ function BookingsPage() {
                       <div className="mt-2 flex flex-wrap gap-1.5 sm:mt-3 sm:gap-2">
                         <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-1 text-[9px] font-semibold sm:px-2.5 sm:py-1.5 sm:text-xs">
                           <CalendarDays className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+
                           {formatDate(booking.visit_date)}
                         </span>
+
                         <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-1 text-[9px] font-semibold sm:px-2.5 sm:py-1.5 sm:text-xs">
                           <Clock3 className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+
                           {formatTime(booking.visit_time)}
                         </span>
                       </div>
@@ -657,7 +860,9 @@ function BookingsPage() {
                       <div className="mt-2 grid grid-cols-2 gap-1.5 sm:mt-4 sm:flex sm:flex-wrap sm:gap-2">
                         <Button
                           variant="outline"
+
                           size="sm"
+
                           className="h-8 min-w-0 rounded-lg px-2 text-[9px] sm:h-9 sm:rounded-xl sm:px-3 sm:text-xs"
                         >
                           <Eye className="mr-1 h-3 w-3 sm:h-3.5 sm:w-3.5" />
@@ -668,8 +873,11 @@ function BookingsPage() {
                           <>
                             <Button
                               size="sm"
+
                               className="h-8 min-w-0 rounded-lg px-2 text-[9px] sm:h-9 sm:rounded-xl sm:px-3 sm:text-xs"
+
                               disabled={workingId === booking.id}
+
                               onClick={() => void updateStatus(booking.id, "approved")}
                             >
                               {workingId === booking.id ? (
@@ -679,11 +887,16 @@ function BookingsPage() {
                               )}
                               Approve
                             </Button>
+
                             <Button
                               variant="outline"
+
                               size="sm"
+
                               className="h-8 min-w-0 rounded-lg border-destructive/30 px-2 text-[9px] text-destructive hover:text-destructive sm:h-9 sm:rounded-xl sm:px-3 sm:text-xs"
+
                               disabled={workingId === booking.id}
+
                               onClick={() => void updateStatus(booking.id, "rejected")}
                             >
                               <X className="mr-1 h-3 w-3" />
@@ -695,9 +908,12 @@ function BookingsPage() {
                         {isCancelled ? (
                           <Button
                             variant="outline"
+
                             size="sm"
+
                             className="h-8 min-w-0 rounded-lg px-2 text-[9px] text-muted-foreground sm:h-9 sm:rounded-xl sm:px-3 sm:text-xs"
-                            onClick={() => clearBooking(booking.id)}
+
+                            onClick={() => setLandlordClearId(booking.id)}
                           >
                             <Trash2 className="mr-1 h-3 w-3" />
                             Clear
@@ -712,6 +928,61 @@ function BookingsPage() {
           )}
         </div>
       </div>
+
+      {landlordClearId !== null ? (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              setLandlordClearId(null);
+            }
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="landlord-clear-title"
+            className="w-full max-w-sm rounded-3xl border border-border bg-card p-5 shadow-2xl"
+          >
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+              <Trash2 className="h-6 w-6" />
+            </div>
+
+            <h2 id="landlord-clear-title" className="mt-4 text-center text-lg font-extrabold">
+              Clear this booking?
+            </h2>
+
+            <p className="mt-2 text-center text-sm leading-5 text-muted-foreground">
+              This will remove the booking from your list. You can&apos;t undo this action.
+            </p>
+
+            <div className="mt-5 grid gap-2">
+              <Button
+                type="button"
+                variant="destructive"
+                className="h-10 rounded-xl"
+                onClick={() => {
+                  const id = landlordClearId;
+                  setLandlordClearId(null);
+                  clearBooking(id);
+                }}
+              >
+                Yes, Clear
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                className="h-10 rounded-xl"
+                onClick={() => setLandlordClearId(null)}
+              >
+                Keep it
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </Page>
   );
 }

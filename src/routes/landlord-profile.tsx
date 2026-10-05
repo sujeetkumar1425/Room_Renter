@@ -9,6 +9,7 @@ import {
   Home,
   LockKeyhole,
   Pencil,
+  ShieldCheck,
   Phone,
   UserRound,
 } from "lucide-react";
@@ -198,6 +199,12 @@ function LandlordProfilePage() {
                   </div>
 
                   <ProfileMenuCard
+                    icon={ShieldCheck}
+                    title="Identification & Verification"
+                    description="Verify your identity and manage your verification status."
+                  />
+
+                  <ProfileMenuCard
                     icon={LockKeyhole}
                     title="Account & Security"
                     description="Manage your password, login methods and security."
@@ -241,6 +248,13 @@ function LandlordProfilePage() {
                         value={profile.phone ? `+91 ${profile.phone}` : null}
                       />
                     </div>
+                  </section>
+                  <section className="card-surface p-7">
+                    <SectionHeading
+                      icon={ShieldCheck}
+                      title="Identification & Verification"
+                      description="Verify your identity and manage your verification status."
+                    />
                   </section>
                   <section className="card-surface p-7">
                     <SectionHeading

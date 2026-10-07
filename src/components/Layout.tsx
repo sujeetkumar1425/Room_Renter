@@ -575,7 +575,7 @@ const renterBottomNav = [
     icon: MessageSquare,
   },
   {
-    to: "/dashboard",
+    to: "/profile",
     label: "Profile",
     icon: UserIcon,
   },
